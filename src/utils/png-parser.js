@@ -198,6 +198,41 @@ function parseA1111Parameters(parametersText, imageWidth, imageHeight) {
  * @param {number} imageHeight - Actual image height (fallback)
  * @returns {Object} Parameters object with prompt, dimensions, seed, etc.
  */
+/**
+ * Resolve a node reference to get actual text value
+ * @param {Object} workflow - Full workflow object
+ * @param {*} value - Value that might be a node reference
+ * @param {number} depth - Recursion depth limit
+ * @returns {string|null} Resolved text or null
+ */
+function resolveNodeReference(workflow, value, depth = 0) {
+  if (depth > 3) return null; // Prevent infinite recursion
+
+  // If it's already a string, return it
+  if (typeof value === 'string') return value;
+
+  // If it's a node reference like ["nodeId", 0]
+  if (Array.isArray(value) && value.length >= 1) {
+    const referencedNodeId = value[0];
+    const referencedNode = workflow[referencedNodeId];
+
+    if (!referencedNode || !referencedNode.inputs) return null;
+
+    // Try to get text from common fields
+    if (referencedNode.inputs.text) {
+      return resolveNodeReference(workflow, referencedNode.inputs.text, depth + 1);
+    }
+    if (referencedNode.inputs.value) {
+      return resolveNodeReference(workflow, referencedNode.inputs.value, depth + 1);
+    }
+    if (referencedNode.inputs.string) {
+      return resolveNodeReference(workflow, referencedNode.inputs.string, depth + 1);
+    }
+  }
+
+  return null;
+}
+
 function extractParametersFromComfyUIWorkflow(workflow, imageWidth, imageHeight) {
   try {
     const params = {};
@@ -207,6 +242,9 @@ function extractParametersFromComfyUIWorkflow(workflow, imageWidth, imageHeight)
       console.error('Invalid workflow: not an object');
       return params;
     }
+
+    // First pass: collect potential prompt text from various sources
+    const promptCandidates = [];
 
     // Search through all nodes to find parameters
     for (const [nodeId, node] of Object.entries(workflow)) {
@@ -218,15 +256,31 @@ function extractParametersFromComfyUIWorkflow(workflow, imageWidth, imageHeight)
 
       // Extract prompt from various sources
       if (!params.prompt) {
-        // Option 1: PrimitiveStringMultiline (our web UI format)
-        if (node.class_type === 'PrimitiveStringMultiline' && node.inputs?.value) {
-          params.prompt = node.inputs.value;
+        // Option 1: CLIPTextEncode with title "Positive Prompt" (highest priority)
+        if (node.class_type === 'CLIPTextEncode' &&
+            node._meta?.title?.includes('Positive Prompt')) {
+          const text = resolveNodeReference(workflow, node.inputs?.text, 0);
+          if (text && text.length > 50) { // Must be substantial
+            promptCandidates.push({ text, priority: 10, source: 'CLIP Positive Prompt' });
+          }
         }
-        // Option 2: CLIPTextEncode with title "Positive Prompt"
+        // Option 2: PrimitiveStringMultiline (our web UI format)
+        else if (node.class_type === 'PrimitiveStringMultiline' && node.inputs?.value) {
+          const text = node.inputs.value;
+          // Skip if it looks like a template/style (contains {$ placeholders)
+          if (text.length > 50 && !text.includes('{$')) {
+            promptCandidates.push({ text, priority: 8, source: 'PrimitiveStringMultiline' });
+          }
+        }
+        // Option 3: CLIPTextEncode with substantial text (not negative)
         else if (node.class_type === 'CLIPTextEncode' &&
-                 node._meta?.title?.includes('Positive Prompt') &&
-                 node.inputs?.text) {
-          params.prompt = node.inputs.text;
+                 !node._meta?.title?.includes('Negative') &&
+                 node.inputs?.text &&
+                 typeof node.inputs.text === 'string') {
+          const text = node.inputs.text;
+          if (text.length > 50) {
+            promptCandidates.push({ text, priority: 7, source: 'CLIPTextEncode' });
+          }
         }
       }
 
@@ -256,7 +310,12 @@ function extractParametersFromComfyUIWorkflow(workflow, imageWidth, imageHeight)
           if (node.inputs.width && !params.width) params.width = node.inputs.width;
           if (node.inputs.height && !params.height) params.height = node.inputs.height;
         }
-        // Option 3: Flux2Scheduler with width/height (as numbers, not references)
+        // Option 3: EmptyLatentImage (SDXL, SD 1.5)
+        else if (node.class_type === 'EmptyLatentImage' && node.inputs) {
+          if (node.inputs.width && !params.width) params.width = node.inputs.width;
+          if (node.inputs.height && !params.height) params.height = node.inputs.height;
+        }
+        // Option 4: Flux2Scheduler with width/height (as numbers, not references)
         else if (node.class_type === 'Flux2Scheduler' && node.inputs) {
           if (typeof node.inputs.width === 'number' && !params.width) {
             params.width = node.inputs.width;
@@ -267,29 +326,78 @@ function extractParametersFromComfyUIWorkflow(workflow, imageWidth, imageHeight)
         }
       }
 
-      // Extract seed
-      if (!params.seed && node.class_type === 'RandomNoise' &&
-          node.inputs?.noise_seed !== undefined) {
-        params.seed = node.inputs.noise_seed;
+      // Extract seed from various sources
+      if (!params.seed) {
+        // RandomNoise (Flux)
+        if (node.class_type === 'RandomNoise' && node.inputs?.noise_seed !== undefined) {
+          // Handle both direct values and node references
+          const seedValue = node.inputs.noise_seed;
+          if (typeof seedValue === 'number') {
+            params.seed = seedValue;
+          } else if (Array.isArray(seedValue)) {
+            // Seed comes from another node - try to resolve it
+            const refNode = workflow[seedValue[0]];
+            if (refNode?.inputs?.seed !== undefined) {
+              params.seed = refNode.inputs.seed;
+            }
+          }
+        }
+        // KSamplerAdvanced or KSampler (SDXL, SD 1.5)
+        else if ((node.class_type === 'KSamplerAdvanced' || node.class_type === 'KSampler') &&
+                 node.inputs?.noise_seed !== undefined) {
+          params.seed = node.inputs.noise_seed;
+        }
+        else if ((node.class_type === 'KSamplerAdvanced' || node.class_type === 'KSampler') &&
+                 node.inputs?.seed !== undefined) {
+          params.seed = node.inputs.seed;
+        }
       }
 
       // Extract model
-      if (!params.model && node.class_type === 'UNETLoader' &&
-          node.inputs?.unet_name) {
-        params.model = node.inputs.unet_name;
+      if (!params.model) {
+        // UNETLoader (Flux)
+        if (node.class_type === 'UNETLoader' && node.inputs?.unet_name) {
+          params.model = node.inputs.unet_name;
+        }
+        // CheckpointLoaderSimple (SDXL, SD 1.5)
+        else if (node.class_type === 'CheckpointLoaderSimple' && node.inputs?.ckpt_name) {
+          params.model = node.inputs.ckpt_name;
+        }
       }
 
       // Extract steps
-      if (!params.steps && node.class_type === 'Flux2Scheduler' &&
-          node.inputs?.steps !== undefined) {
-        params.steps = node.inputs.steps;
+      if (!params.steps) {
+        // Flux2Scheduler
+        if (node.class_type === 'Flux2Scheduler' && node.inputs?.steps !== undefined) {
+          params.steps = node.inputs.steps;
+        }
+        // KSamplerAdvanced or KSampler
+        else if ((node.class_type === 'KSamplerAdvanced' || node.class_type === 'KSampler') &&
+                 node.inputs?.steps !== undefined) {
+          params.steps = node.inputs.steps;
+        }
       }
 
       // Extract CFG
-      if (!params.cfg && node.class_type === 'CFGGuider' &&
-          node.inputs?.cfg !== undefined) {
-        params.cfg = node.inputs.cfg;
+      if (!params.cfg) {
+        // CFGGuider (Flux)
+        if (node.class_type === 'CFGGuider' && node.inputs?.cfg !== undefined) {
+          params.cfg = node.inputs.cfg;
+        }
+        // KSamplerAdvanced or KSampler
+        else if ((node.class_type === 'KSamplerAdvanced' || node.class_type === 'KSampler') &&
+                 node.inputs?.cfg !== undefined) {
+          params.cfg = node.inputs.cfg;
+        }
       }
+    }
+
+    // After loop: select best prompt candidate
+    if (!params.prompt && promptCandidates.length > 0) {
+      // Sort by priority (highest first)
+      promptCandidates.sort((a, b) => b.priority - a.priority);
+      params.prompt = promptCandidates[0].text;
+      console.log('Selected prompt from:', promptCandidates[0].source);
     }
 
     // Use actual image dimensions as fallback if not found or if they're significantly different

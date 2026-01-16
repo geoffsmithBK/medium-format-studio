@@ -52,6 +52,16 @@ Make the image generation 'session' feel less silo'd/brittle/encumbering for cre
 - Populates prompt, negative prompt, dimensions, seed, model, steps, CFG
 - Eliminates manual re-entry for iteration
 
+### 8. Image-to-Image / Image Editing Workflow Support
+- Support for Flux Klein image-to-image (editing) workflows
+- Upload and process user-provided images:
+  - AI-generated images (with embedded metadata)
+  - Non-AI images (photos, artwork, etc.)
+- Parse and extract metadata from uploaded images when available
+- Allow users to edit existing images with new prompts
+- Maintain workflow parameters from source image when applicable
+- Handle reference images and image conditioning nodes
+
 ---
 
 ## Technical Investigation Required
