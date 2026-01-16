@@ -46,6 +46,23 @@ export function updatePrompt(workflow, promptText) {
 }
 
 /**
+ * Update the negative prompt text in the workflow
+ * @param {Object} workflow - Workflow object
+ * @param {string} negativePromptText - New negative prompt text
+ * @returns {Object} Updated workflow (new instance)
+ */
+export function updateNegativePrompt(workflow, negativePromptText) {
+  const updated = cloneWorkflow(workflow);
+  const node = updated[NODE_IDS.NEGATIVE_PROMPT];
+
+  if (node && node.inputs) {
+    node.inputs.text = negativePromptText;
+  }
+
+  return updated;
+}
+
+/**
  * Update image dimensions in the workflow
  * @param {Object} workflow - Workflow object
  * @param {number} width - Image width
@@ -151,6 +168,7 @@ export function generateRandomSeed() {
  * @param {Object} workflow - Base workflow object
  * @param {Object} params - Parameters to update
  * @param {string} params.prompt - Prompt text
+ * @param {string} params.negativePrompt - Negative prompt text
  * @param {number} params.width - Image width
  * @param {number} params.height - Image height
  * @param {number} params.seed - Random seed
@@ -164,6 +182,10 @@ export function updateWorkflow(workflow, params) {
 
   if (params.prompt !== undefined) {
     updated = updatePrompt(updated, params.prompt);
+  }
+
+  if (params.negativePrompt !== undefined) {
+    updated = updateNegativePrompt(updated, params.negativePrompt);
   }
 
   if (params.width !== undefined || params.height !== undefined) {

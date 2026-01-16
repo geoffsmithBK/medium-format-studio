@@ -1,0 +1,61 @@
+.negative-prompt-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.negative-prompt-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.negative-prompt-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #0066cc;
+}
+
+.negative-prompt-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.negative-prompt-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #e0e0e0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.negative-prompt-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 60px;
+  transition: border-color 0.2s;
+}
+
+.negative-prompt-textarea:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.negative-prompt-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.negative-prompt-textarea::placeholder {
+  color: #707070;
+}

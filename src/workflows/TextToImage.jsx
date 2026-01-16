@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PromptInput from '../components/PromptInput';
+import NegativePromptInput from '../components/NegativePromptInput';
 import ParameterControls from '../components/ParameterControls';
 import ImageDisplay from '../components/ImageDisplay';
 import ProgressBar from '../components/ProgressBar';
@@ -22,6 +23,8 @@ import './TextToImage.css';
 export default function TextToImage() {
   // Form state
   const [prompt, setPrompt] = useState('');
+  const [negativePromptEnabled, setNegativePromptEnabled] = useState(false);
+  const [negativePrompt, setNegativePrompt] = useState('blurry, ugly, bad, text');
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [seed, setSeed] = useState(generateRandomSeed());
@@ -90,6 +93,7 @@ export default function TextToImage() {
 
       const updatedWorkflow = updateWorkflow(baseWorkflow, {
         prompt,
+        negativePrompt: negativePromptEnabled ? negativePrompt : '',
         width,
         height,
         seed,
@@ -235,6 +239,14 @@ export default function TextToImage() {
           <PromptInput
             value={prompt}
             onChange={setPrompt}
+            disabled={isGenerating}
+          />
+
+          <NegativePromptInput
+            enabled={negativePromptEnabled}
+            value={negativePrompt}
+            onEnabledChange={setNegativePromptEnabled}
+            onChange={setNegativePrompt}
             disabled={isGenerating}
           />
 

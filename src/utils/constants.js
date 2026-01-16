@@ -27,6 +27,7 @@ export const MODELS = {
 // Workflow node IDs (API format uses subgraph prefixes)
 export const NODE_IDS = {
   PROMPT: '76',
+  NEGATIVE_PROMPT: '75:67',  // CLIPTextEncode (Negative Prompt)
   WIDTH: '75:68',
   HEIGHT: '75:69',
   SEED: '75:73',

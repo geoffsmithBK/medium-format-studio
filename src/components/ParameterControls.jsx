@@ -133,7 +133,7 @@ export default function ParameterControls({
               id="cfg"
               type="number"
               className="parameter-input"
-              value={cfg}
+              value={Number(cfg).toFixed(1)}
               onChange={(e) => onCfgChange(parseFloat(e.target.value) || 1.0)}
               min="0"
               max="30"
