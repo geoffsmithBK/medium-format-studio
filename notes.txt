@@ -1,3 +1,0 @@
-Note #1: there is an instance of ComfyUI currently running on this machine at http://127.0.0.1:8188. It is idle but has loaded the workflow referenced in the image_flux2_klein_text_to_image.json file in this directory. The comfy_webui_text-to-image.png is an example of the kind of web user interface I'd like you to create from the workflow referenced in the .json file.
-
-Noate #2: the only change from the workflow as it's currently written that I've made is to use a slightly different version of the Flux Klein model, the distilled version known simply as 'flux-2-klein-4b.safetensors' so be sure to reference that version in your work.
