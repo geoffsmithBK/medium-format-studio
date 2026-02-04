@@ -518,6 +518,45 @@ All WebSocket messages and image fetch operations are logged to the browser cons
 ### Current Status: MVP Complete
 The application successfully generates images with both Flux 2 Klein model variants, displays them in the UI, and provides a polished user experience with real-time progress tracking and automatic parameter optimization.
 
+## Image Gallery Module (Planned)
+
+A new **Gallery** tab feature is planned to enable browsing, viewing, and inspecting generation metadata for AI-generated images. Full implementation details are in `GALLERY.md`.
+
+### Key Features (Planned)
+- **Tab Navigation**: Switch between Generate and Gallery views
+- **Image Grid**: Browse thumbnails of generated images
+- **Metadata Viewer**: Inspect generation parameters with copy-to-clipboard
+- **Dual Source Support**: 
+  - ComfyUI `/history` API for recent generations
+  - Drag-and-drop for external PNG files
+- **Standalone Operation**: Gallery works independently from generation UI
+
+### New Architecture Components
+```
+src/
+├── views/                    # Top-level view components
+│   ├── GenerateView.jsx      # Wraps existing TextToImage
+│   └── GalleryView.jsx       # New gallery view
+├── components/
+│   ├── TabNavigation.jsx     # Tab switcher
+│   └── gallery/              # Gallery-specific components
+│       ├── GalleryGrid.jsx   # Thumbnail grid
+│       ├── ImageCard.jsx     # Single thumbnail
+│       ├── ImageViewer.jsx   # Full-size modal
+│       └── MetadataPanel.jsx # Metadata display
+└── services/
+    └── gallery-service.js    # Gallery data fetching
+```
+
+### Implementation Status
+- **Phase 1**: Foundation (Not Started)
+- **Phase 2**: Grid & Thumbnails (Not Started)
+- **Phase 3**: Image Viewer & Metadata (Not Started)
+- **Phase 4**: Drag-and-Drop Support (Not Started)
+- **Phase 5**: Polish & Enhancements (Not Started)
+
+See `GALLERY.md` for detailed implementation plan.
+
 ## Version Control and Repository
 
 ### GitHub Repository
