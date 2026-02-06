@@ -1,0 +1,110 @@
+.metadata-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.metadata-panel-empty {
+  color: #707070;
+  font-size: 0.813rem;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+/* ── Preview image ────────────────────────────────────────────────── */
+
+.metadata-preview {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #404040;
+}
+
+.metadata-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ── Prompt section ───────────────────────────────────────────────── */
+
+.metadata-prompt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.metadata-prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metadata-label {
+  font-size: 0.688rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #909090;
+}
+
+.metadata-copy-btn {
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  color: #909090;
+  font-family: inherit;
+  font-size: 0.688rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.metadata-copy-btn:hover {
+  color: #e0e0e0;
+  border-color: #0066cc;
+}
+
+.metadata-prompt-text {
+  padding: 0.5rem;
+  background: #2a2a2a;
+  border: 1px solid #333333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 0.813rem;
+  line-height: 1.5;
+  max-height: 120px;
+  overflow-y: auto;
+  word-break: break-word;
+}
+
+/* ── Parameter grid ───────────────────────────────────────────────── */
+
+.metadata-params {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.metadata-param {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.metadata-param-value {
+  padding: 0.375rem 0.5rem;
+  background: #2a2a2a;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 0.813rem;
+}
+
+/* ── Filename ─────────────────────────────────────────────────────── */
+
+.metadata-filename {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #606060;
+  word-break: break-all;
+}

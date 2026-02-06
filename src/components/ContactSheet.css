@@ -1,0 +1,73 @@
+.contact-sheet {
+  flex: 1;
+}
+
+.contact-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.contact-sheet-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.contact-sheet-thumb:hover {
+  border-color: #505050;
+}
+
+.contact-sheet-thumb-selected {
+  border-color: #0066cc;
+}
+
+.contact-sheet-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Empty / loading states ───────────────────────────────────────── */
+
+.contact-sheet-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #606060;
+  text-align: center;
+  padding: 4rem 2rem;
+  min-height: 400px;
+}
+
+.contact-sheet-empty svg {
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.contact-sheet-empty p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.contact-sheet-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #909090;
+  font-size: 0.875rem;
+}
+
+.contact-sheet-error {
+  padding: 1rem;
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  text-align: center;
+}

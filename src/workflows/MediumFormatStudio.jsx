@@ -6,6 +6,9 @@ import SidebarSection from '../components/SidebarSection';
 import FilmFormatSelect from '../components/FilmFormatSelect';
 import LoRAControls from '../components/LoRAControls';
 import StageTabs from '../components/StageTabs';
+import ContactSheet from '../components/ContactSheet';
+import MetadataPanel from '../components/MetadataPanel';
+import FullscreenViewer from '../components/FullscreenViewer';
 import {
   loadMFSWorkflow,
   buildWorkflowForTarget,
@@ -20,6 +23,10 @@ import {
   checkServerStatus,
   getAvailableLoRAs,
 } from '../services/comfyui-api';
+import {
+  fetchGalleryItems,
+  extractGalleryItemMetadata,
+} from '../services/gallery-service';
 import {
   MFS_FILM_FORMATS,
   MFS_DEFAULT_FILM_FORMAT,
@@ -36,6 +43,13 @@ import './MediumFormatStudio.css';
 //        → generating_work → work_ready
 //        → generating_final → final_ready
 const GENERATING_STATES = ['generating_contact', 'generating_work', 'generating_final'];
+
+const MFS_TABS = [
+  { id: 'contact', label: 'Contact Print' },
+  { id: 'work', label: 'Work Print' },
+  { id: 'final', label: 'Final Print' },
+  { id: 'gallery', label: 'Contact Sheet', className: 'stage-tab-gallery' },
+];
 
 export default function MediumFormatStudio() {
   // ── Form state ──────────────────────────────────────────────────────
@@ -69,6 +83,15 @@ export default function MediumFormatStudio() {
   const [progressMax, setProgressMax] = useState(0);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+
+  // ── Gallery state ───────────────────────────────────────────────────
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryError, setGalleryError] = useState('');
+  const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
+  const [selectedMetadata, setSelectedMetadata] = useState(null);
+  const [galleryViewerOpen, setGalleryViewerOpen] = useState(false);
+  const [galleryViewerUrl, setGalleryViewerUrl] = useState('');
 
   // ── Refs ────────────────────────────────────────────────────────────
   const wsRef = useRef(null);
@@ -108,11 +131,31 @@ export default function MediumFormatStudio() {
   useEffect(() => { localStorage.setItem('mfs_prompt', prompt); }, [prompt]);
   useEffect(() => { localStorage.setItem('mfs_seed', String(seed)); }, [seed]);
 
+  // Fetch gallery items when gallery tab is activated
+  useEffect(() => {
+    if (activeTab !== 'gallery') return;
+
+    async function loadGallery() {
+      setGalleryLoading(true);
+      setGalleryError('');
+      try {
+        const items = await fetchGalleryItems();
+        setGalleryItems(items);
+      } catch (err) {
+        console.error('Gallery fetch error:', err);
+        setGalleryError('Failed to load gallery. Is ComfyUI running?');
+      } finally {
+        setGalleryLoading(false);
+      }
+    }
+    loadGallery();
+  }, [activeTab]);
+
   // ── Derived state ───────────────────────────────────────────────────
   const isGenerating = GENERATING_STATES.includes(pipelineState);
   const paramsLocked = pipelineState !== 'idle';
 
-  const enabledTabs = ['contact'];
+  const enabledTabs = ['contact', 'gallery'];
   if (workPrintUrl) enabledTabs.push('work');
   if (finalPrintUrl) enabledTabs.push('final');
 
@@ -127,6 +170,8 @@ export default function MediumFormatStudio() {
     const match = filmFormat.match(/(\d+)x(\d+)$/);
     return match ? `${match[1]} / ${match[2]}` : undefined;
   })();
+
+  const isGalleryTab = activeTab === 'gallery';
 
   // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -344,6 +389,19 @@ export default function MediumFormatStudio() {
     promptIdRef.current = null;
   }
 
+  // ── Gallery Handlers ────────────────────────────────────────────────
+
+  function handleGallerySelect(item) {
+    setSelectedGalleryItem(item);
+    const meta = extractGalleryItemMetadata(item);
+    setSelectedMetadata(meta);
+  }
+
+  function handleGalleryOpenViewer(item) {
+    setGalleryViewerUrl(item.imageUrl);
+    setGalleryViewerOpen(true);
+  }
+
   // ── Render ──────────────────────────────────────────────────────────
 
   const canPromote = ['contact_ready', 'work_ready', 'final_ready'].includes(pipelineState);
@@ -367,149 +425,159 @@ export default function MediumFormatStudio() {
           </span>
         </h1>
 
-        <div className="mfs-stages">
-          {/* Stage 1: Film and Filters */}
-          <SidebarSection stageNumber={1} title="Film and Filters" disabled={false} defaultOpen={false}>
-            <div className="mfs-field">
-              <label htmlFor="model-select" className="mfs-label">Model</label>
-              <select
-                id="model-select"
-                className="mfs-select"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                disabled={paramsLocked}
-              >
-                {MFS_MODELS.map((m) => (
-                  <option key={m.filename} value={m.filename}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-            <LoRAControls
-              lora1Enabled={lora1Enabled}
-              lora1Strength={lora1Strength}
-              lora1Name={MFS_LORA_DEFAULTS.lora1.name}
-              lora2Enabled={lora2Enabled}
-              lora2Strength={lora2Strength}
-              lora2Name={MFS_LORA_DEFAULTS.lora2.name}
-              onLora1EnabledChange={setLora1Enabled}
-              onLora1StrengthChange={setLora1Strength}
-              onLora2EnabledChange={setLora2Enabled}
-              onLora2StrengthChange={setLora2Strength}
-              disabled={paramsLocked}
-            />
-          </SidebarSection>
-
-          {/* Stage 2: Subject, Style & Format */}
-          <SidebarSection stageNumber={2} title="Subject, Style & Format" defaultOpen={true}>
-            <PromptInput
-              value={prompt}
-              onChange={setPrompt}
-              placeholder="Describe what we see..."
-              disabled={paramsLocked}
-            />
-            <FilmFormatSelect
-              value={filmFormat}
-              onChange={setFilmFormat}
-              formats={MFS_FILM_FORMATS}
-              disabled={paramsLocked}
-            />
-          </SidebarSection>
-
-          {/* Stage 3: Develop & Contact Print */}
-          <SidebarSection stageNumber={3} title="Develop & Contact Print" defaultOpen={true}>
-            <div className="mfs-seed-row">
-              <div className="mfs-field mfs-seed-field">
-                <label htmlFor="seed" className="mfs-label">Seed</label>
-                <input
-                  id="seed"
-                  type="number"
-                  className="mfs-input"
-                  value={seed}
-                  onChange={(e) => setSeed(parseInt(e.target.value, 10) || 0)}
+        {isGalleryTab ? (
+          <MetadataPanel
+            imageUrl={selectedGalleryItem?.imageUrl || null}
+            filename={selectedGalleryItem?.filename || null}
+            metadata={selectedMetadata}
+          />
+        ) : (
+          <>
+            <div className="mfs-stages">
+              {/* Stage 1: Film and Filters */}
+              <SidebarSection stageNumber={1} title="Film and Filters" disabled={false} defaultOpen={false}>
+                <div className="mfs-field">
+                  <label htmlFor="model-select" className="mfs-label">Model</label>
+                  <select
+                    id="model-select"
+                    className="mfs-select"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    disabled={paramsLocked}
+                  >
+                    {MFS_MODELS.map((m) => (
+                      <option key={m.filename} value={m.filename}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <LoRAControls
+                  lora1Enabled={lora1Enabled}
+                  lora1Strength={lora1Strength}
+                  lora1Name={MFS_LORA_DEFAULTS.lora1.name}
+                  lora2Enabled={lora2Enabled}
+                  lora2Strength={lora2Strength}
+                  lora2Name={MFS_LORA_DEFAULTS.lora2.name}
+                  onLora1EnabledChange={setLora1Enabled}
+                  onLora1StrengthChange={setLora1Strength}
+                  onLora2EnabledChange={setLora2Enabled}
+                  onLora2StrengthChange={setLora2Strength}
                   disabled={paramsLocked}
                 />
-              </div>
+              </SidebarSection>
+
+              {/* Stage 2: Subject, Style & Format */}
+              <SidebarSection stageNumber={2} title="Subject, Style & Format" defaultOpen={true}>
+                <PromptInput
+                  value={prompt}
+                  onChange={setPrompt}
+                  placeholder="Describe what we see..."
+                  disabled={paramsLocked}
+                />
+                <FilmFormatSelect
+                  value={filmFormat}
+                  onChange={setFilmFormat}
+                  formats={MFS_FILM_FORMATS}
+                  disabled={paramsLocked}
+                />
+              </SidebarSection>
+
+              {/* Stage 3: Develop & Contact Print */}
+              <SidebarSection stageNumber={3} title="Develop & Contact Print" defaultOpen={true}>
+                <div className="mfs-seed-row">
+                  <div className="mfs-field mfs-seed-field">
+                    <label htmlFor="seed" className="mfs-label">Seed</label>
+                    <input
+                      id="seed"
+                      type="number"
+                      className="mfs-input"
+                      value={seed}
+                      onChange={(e) => setSeed(parseInt(e.target.value, 10) || 0)}
+                      disabled={paramsLocked}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="mfs-random-btn"
+                    onClick={() => setSeed(generateRandomSeed())}
+                    disabled={paramsLocked}
+                    title="Random seed"
+                  >
+                    Random
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="mfs-action-btn mfs-action-primary"
+                  onClick={handleExposeContactPrint}
+                  disabled={isGenerating || !prompt.trim() || paramsLocked}
+                >
+                  {pipelineState === 'generating_contact' ? 'Exposing...' : 'Expose Contact Print'}
+                </button>
+              </SidebarSection>
+
+              {/* Stage 4: Work Print */}
+              <SidebarSection
+                stageNumber={4}
+                title="Work Print"
+                disabled={!canPromote || pipelineState === 'generating_work'}
+                defaultOpen={false}
+              >
+                <div className="mfs-field">
+                  <label htmlFor="upscale" className="mfs-label">Upscale Factor</label>
+                  <input
+                    id="upscale"
+                    type="number"
+                    className="mfs-input"
+                    value={upscaleFactor}
+                    onChange={(e) => setUpscaleFactor(parseFloat(e.target.value) || 1.5)}
+                    step={0.1}
+                    min={1}
+                    max={3}
+                    disabled={paramsLocked}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="mfs-action-btn"
+                  onClick={handlePromoteToWorkPrint}
+                  disabled={isGenerating || !contactPrintUrl}
+                >
+                  {pipelineState === 'generating_work' ? 'Promoting...' : 'Promote to Work Print'}
+                </button>
+              </SidebarSection>
+
+              {/* Stage 5: Scan / Digital C-Print */}
+              <SidebarSection
+                stageNumber={5}
+                title="Scan / Digital C-Print"
+                disabled={!canPromote || pipelineState === 'generating_final'}
+                defaultOpen={false}
+              >
+                <button
+                  type="button"
+                  className="mfs-action-btn"
+                  onClick={handlePromoteToFinalPrint}
+                  disabled={isGenerating || !contactPrintUrl}
+                >
+                  {pipelineState === 'generating_final' ? 'Promoting...' : 'Promote to Final Print'}
+                </button>
+                {!workPrintUrl && contactPrintUrl && (
+                  <p className="mfs-note">Skips Work Print stage</p>
+                )}
+              </SidebarSection>
+            </div>
+
+            {/* New Exposure button — visible after any stage completes */}
+            {paramsLocked && !isGenerating && (
               <button
                 type="button"
-                className="mfs-random-btn"
-                onClick={() => setSeed(generateRandomSeed())}
-                disabled={paramsLocked}
-                title="Random seed"
+                className="mfs-new-exposure-btn"
+                onClick={handleNewExposure}
               >
-                Random
+                New Exposure
               </button>
-            </div>
-            <button
-              type="button"
-              className="mfs-action-btn mfs-action-primary"
-              onClick={handleExposeContactPrint}
-              disabled={isGenerating || !prompt.trim() || paramsLocked}
-            >
-              {pipelineState === 'generating_contact' ? 'Exposing...' : 'Expose Contact Print'}
-            </button>
-          </SidebarSection>
-
-          {/* Stage 4: Work Print */}
-          <SidebarSection
-            stageNumber={4}
-            title="Work Print"
-            disabled={!canPromote || pipelineState === 'generating_work'}
-            defaultOpen={false}
-          >
-            <div className="mfs-field">
-              <label htmlFor="upscale" className="mfs-label">Upscale Factor</label>
-              <input
-                id="upscale"
-                type="number"
-                className="mfs-input"
-                value={upscaleFactor}
-                onChange={(e) => setUpscaleFactor(parseFloat(e.target.value) || 1.5)}
-                step={0.1}
-                min={1}
-                max={3}
-                disabled={paramsLocked}
-              />
-            </div>
-            <button
-              type="button"
-              className="mfs-action-btn"
-              onClick={handlePromoteToWorkPrint}
-              disabled={isGenerating || !contactPrintUrl}
-            >
-              {pipelineState === 'generating_work' ? 'Promoting...' : 'Promote to Work Print'}
-            </button>
-          </SidebarSection>
-
-          {/* Stage 5: Scan / Digital C-Print */}
-          <SidebarSection
-            stageNumber={5}
-            title="Scan / Digital C-Print"
-            disabled={!canPromote || pipelineState === 'generating_final'}
-            defaultOpen={false}
-          >
-            <button
-              type="button"
-              className="mfs-action-btn"
-              onClick={handlePromoteToFinalPrint}
-              disabled={isGenerating || !contactPrintUrl}
-            >
-              {pipelineState === 'generating_final' ? 'Promoting...' : 'Promote to Final Print'}
-            </button>
-            {!workPrintUrl && contactPrintUrl && (
-              <p className="mfs-note">Skips Work Print stage</p>
             )}
-          </SidebarSection>
-        </div>
-
-        {/* New Exposure button — visible after any stage completes */}
-        {paramsLocked && !isGenerating && (
-          <button
-            type="button"
-            className="mfs-new-exposure-btn"
-            onClick={handleNewExposure}
-          >
-            New Exposure
-          </button>
+          </>
         )}
 
         {error && <div className="error-message">{error}</div>}
@@ -517,20 +585,42 @@ export default function MediumFormatStudio() {
 
       {/* ── Content Area ────────────────────────────────────────── */}
       <div className="mfs-content">
-        <ProgressBar
-          progress={progress}
-          max={progressMax}
-          status={status}
-          isGenerating={isGenerating}
-        />
+        {!isGalleryTab && (
+          <ProgressBar
+            progress={progress}
+            max={progressMax}
+            status={status}
+            isGenerating={isGenerating}
+          />
+        )}
 
         <StageTabs
+          tabs={MFS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           enabledTabs={enabledTabs}
         />
 
-        <ImageDisplay imageUrl={currentImageUrl} prompt={prompt} aspectRatio={filmAspectRatio} />
+        {isGalleryTab ? (
+          <>
+            <ContactSheet
+              items={galleryItems}
+              selectedId={selectedGalleryItem?.promptId || null}
+              onSelect={handleGallerySelect}
+              onOpenViewer={handleGalleryOpenViewer}
+              isLoading={galleryLoading}
+              error={galleryError}
+            />
+            <FullscreenViewer
+              imageUrl={galleryViewerUrl}
+              alt="Gallery image"
+              isOpen={galleryViewerOpen}
+              onClose={() => setGalleryViewerOpen(false)}
+            />
+          </>
+        ) : (
+          <ImageDisplay imageUrl={currentImageUrl} prompt={prompt} aspectRatio={filmAspectRatio} />
+        )}
       </div>
     </div>
   );

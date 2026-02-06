@@ -42,3 +42,19 @@
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* Gallery tab — subtle left-border separator */
+.stage-tab-gallery {
+  margin-left: 6px;
+  position: relative;
+}
+
+.stage-tab-gallery::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: #404040;
+}

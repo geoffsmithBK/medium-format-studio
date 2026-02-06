@@ -233,7 +233,7 @@ function resolveNodeReference(workflow, value, depth = 0) {
   return null;
 }
 
-function extractParametersFromComfyUIWorkflow(workflow, imageWidth, imageHeight) {
+export function extractParametersFromComfyUIWorkflow(workflow, imageWidth, imageHeight) {
   try {
     const params = {};
 
