@@ -1,12 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import FullscreenViewer from './FullscreenViewer';
 import './ImageDisplay.css';
 
 /**
  * Display generated image with download button and fullscreen viewer.
+ *
+ * Small images (native width < container) display at 1:1, centered.
+ * Click zooms to fit (fills column width). Click again opens fullscreen.
+ *
+ * Large images display fitted to the column. Click opens fullscreen.
  */
 export default function ImageDisplay({ imageUrl, prompt, aspectRatio }) {
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [isSmallImage, setIsSmallImage] = useState(false);
+  const [inlineFitted, setInlineFitted] = useState(false);
+  const containerRef = useRef(null);
+
+  // Reset inline state when image changes
+  useEffect(() => {
+    setIsSmallImage(false);
+    setInlineFitted(false);
+  }, [imageUrl]);
+
+  const handleImageLoad = (e) => {
+    if (containerRef.current) {
+      setIsSmallImage(e.target.naturalWidth < containerRef.current.clientWidth);
+    }
+  };
+
+  const handleClick = () => {
+    if (isSmallImage && !inlineFitted) {
+      setInlineFitted(true);
+    } else {
+      setViewerOpen(true);
+    }
+  };
 
   const handleDownload = () => {
     const link = document.createElement('a');
@@ -41,13 +69,17 @@ export default function ImageDisplay({ imageUrl, prompt, aspectRatio }) {
 
   return (
     <>
-      <div className="image-display">
+      <div className="image-display" ref={containerRef}>
         <img
           src={imageUrl}
           alt={prompt || 'Generated image'}
           className="generated-image"
-          onClick={() => setViewerOpen(true)}
-          style={{ cursor: 'pointer' }}
+          onClick={handleClick}
+          onLoad={handleImageLoad}
+          style={{
+            cursor: isSmallImage && !inlineFitted ? 'zoom-in' : 'pointer',
+            width: inlineFitted ? '100%' : undefined,
+          }}
         />
       </div>
       <button className="download-button" onClick={handleDownload} type="button">
