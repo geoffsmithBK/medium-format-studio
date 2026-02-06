@@ -1,11 +1,11 @@
 import React from 'react';
-import TextToImage from './workflows/TextToImage';
+import MediumFormatStudio from './workflows/MediumFormatStudio';
 import './App.css';
 
 function App() {
   return (
     <div className="app">
-      <TextToImage />
+      <MediumFormatStudio />
     </div>
   );
 }

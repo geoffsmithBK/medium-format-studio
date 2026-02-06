@@ -1,0 +1,39 @@
+.film-format-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.film-format-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.film-format-select {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23909090' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+}
+
+.film-format-select:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.film-format-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

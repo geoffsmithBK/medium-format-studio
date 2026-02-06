@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This project creates a web-based user interface for AI image generation, built with React and Vite. It currently uses ComfyUI as its inference backend (`http://127.0.0.1:8188`), with planned support for Draw Things as an alternate backend for optimized Apple Silicon inference.
 
+### Active Workflow: Medium Format Studio
+
+The application now uses the **Medium Format Studio** (MFS) workflow — a multi-stage darkroom-metaphor pipeline for Flux.2 Klein 9B image generation. This replaces the original single-pass `TextToImage` workflow (which remains in the codebase but is no longer imported by `App.jsx`).
+
 ## Backend Architecture (Current & Planned)
 
 ### Current: ComfyUI Backend
@@ -29,58 +33,102 @@ This project creates a web-based user interface for AI image generation, built w
 - MLX is another Apple-native option but requires leaving the PyTorch ecosystem entirely
 - For this project, Draw Things is the pragmatic choice: it runs as a local app with an HTTP API, uses optimized Metal kernels, and supports Flux 2 Klein models
 
-## ComfyUI Workflow Architecture
+## Medium Format Studio Workflow Architecture
 
-The project is built around a Flux 2 Klein text-to-image workflow. This workflow uses:
+The MFS workflow is a 5-stage pipeline using the Flux.2 Klein 9B model. It uses a darkroom metaphor where images progress through increasingly refined stages, with ComfyUI's execution caching ensuring that earlier stages are not re-computed when promoting to later stages.
 
-### Workflow File Formats
+### Workflow File
+- **Template**: `public/medium_format_studio_api.json` (API format)
+- **Source**: Exported from ComfyUI's "Medium Format Film Studio" workflow
+
+### Models Used
+- **Diffusion Model**: `flux-2-klein-9b.safetensors` (9B parameter model)
+- **Text Encoder**: `qwen_3_8b_fp8mixed.safetensors`
+- **VAE**: `flux2-vae.safetensors`
+- **AI Upscaler**: `seedvr2_ema_7b_sharp_fp16.safetensors` (SeedVR2 7B)
+- **LoRA 1 (Detail)**: `FluxKlein/detail_slider_klein_9b_20260123_065513.safetensors`
+- **LoRA 2 (Chiaroscuro)**: `FluxKlein/klein_slider_chiaroscuro.safetensors`
+
+### Pipeline Stages
+
+| # | Stage Name | What It Does | Key Nodes | SaveImage Node |
+|---|-----------|-------------|-----------|---------------|
+| 1 | Negative & Filtration | Load 9B model, apply LoRA stack, encode negative prompt | 30, 18, 11, 12, 7 | — |
+| 2 | Subject, Style & Format | Encode positive prompt, set film format/aspect ratio | 13, 19, 55 | — |
+| 3 | Develop & Contact Print | Initial 6-step diffusion → decoded "contact print" | 16, 10, 2, 3, 1, 6, 4, 5, 17 | **17** |
+| 4 | Work Print | Latent upscale (1.5x) + 4-step 2nd pass + sharpen | 46, 52, 36, 50, 53, 39, 43, 38, 37, 47, 74, 48 | **48** |
+| 5 | Scan / Digital C-Print | SeedVR2 AI upscale + sharpen | 80, 77, 76, 78, 79, 60, 61, 62, 75, 63 | **63** |
+
+**Excluded nodes**: 71 (Image Comparer — UI-only), 54 (disconnected ImageFromBatch)
+
+### Progressive Execution & Caching
+
+The key design principle is progressive execution leveraging ComfyUI's node caching:
+
+1. **Contact Print** (stages 1-3): Quick 6-step generation for evaluation
+2. **Promote to Work Print** (stages 1-4): ComfyUI caches stages 1-3, only runs stage 4
+3. **Promote to Final Print** (stages 1-5): ComfyUI caches everything already computed
+
+**Skip Work Print**: When promoting directly from contact to final, stage 4 nodes are omitted and stage 5 inputs (nodes 80, 62) are rewired from node 74 (sharpened work print) to node 5 (contact print VAE decode).
+
+### MFS Parameter Injection
+
+| Parameter | Node ID | Field | Description |
+|-----------|---------|-------|-------------|
+| Positive Prompt | 13 | `inputs.text` | CLIPTextEncode "We see..." |
+| Negative Prompt | 7 | `inputs.text` | CLIPTextEncode "We don't see..." |
+| Film Format | 19 | `inputs.dimensions` | EmptyLatentImageCustomPresets preset string |
+| Seed | 16 | `inputs.seed` | Seed (rgthree) |
+| LoRA 1 on/strength | 18 | `inputs.lora_1.on/.strength` | Power Lora Loader (rgthree) |
+| LoRA 2 on/strength | 18 | `inputs.lora_2.on/.strength` | Power Lora Loader (rgthree) |
+| Upscale Factor | 52 | `inputs.value` | PrimitiveFloat (shared between stages 4 & 5) |
+
+### Film Format Presets
+
+The presets match the `EmptyLatentImageCustomPresets` node and must use the exact string format `"Label - WxH"`:
+
+| Label | Dimensions |
+|-------|-----------|
+| 6x7 | 1120x928 |
+| 6x6 | 1024x1024 |
+| 645 | 1184x864 |
+| 6x9 | 1216x832 |
+| 6x17 | 1600x576 |
+| Cinemascope | 1536x640 |
+| Cinemascope2K | 2048x864 |
+
+Source file: `/Users/gsmith/Documents/comfy/ComfyUI/custom_nodes/comfyui-kjnodes/custom_dimensions.json`
+
+### State Machine
+
+```
+idle → generating_contact → contact_ready
+                              ↓                ↓
+                   generating_work    generating_final
+                              ↓                ↓
+                        work_ready       final_ready
+                              ↓
+                   generating_final
+                              ↓
+                        final_ready
+```
+
+Parameters are locked (form controls disabled) whenever `pipelineState !== 'idle'` to preserve ComfyUI cache validity. "New Exposure" resets to idle with a fresh seed.
+
+## Legacy: TextToImage Workflow
+
+The original single-pass TextToImage workflow is preserved in the codebase (`src/workflows/TextToImage.jsx`) but is no longer imported by `App.jsx`. It used the simpler `image_flux2_klein_text_to_image_api.json` workflow with the 4B model.
+
+### Legacy Workflow File Formats
 ComfyUI has two different workflow formats:
 
 1. **Frontend/UI Format** (`image_flux2_klein_text_to_image.json`): Contains UI elements like node positions, links, groups. Used by the ComfyUI web interface.
 
-2. **API Format** (`image_flux2_klein_text_to_image_api.json`): Simplified format for API execution. Contains only node IDs, class types, and inputs. **This is what the web UI uses.**
+2. **API Format** (`image_flux2_klein_text_to_image_api.json`): Simplified format for API execution. Contains only node IDs, class types, and inputs.
 
 The web UI requires the API format. To export:
 - In ComfyUI, enable "Dev mode" in settings → Click "Save (API Format)"
 - Or use browser console: `copy(JSON.stringify(await app.graphToPrompt(), null, 2))`
-
-**API Format Structure:**
-```json
-{
-  "node_id": {
-    "class_type": "NodeClassName",
-    "inputs": {
-      "parameter": "value"
-    }
-  }
-}
-```
-
-### Models Used
-- **Diffusion Model**: `flux-2-klein-4b.safetensors` (distilled version)
-  - Alternative: `flux-2-klein-base-4b.safetensors`
-- **Text Encoder**: `qwen_3_4b.safetensors`
-- **VAE**: `flux2-vae.safetensors`
-
-### Workflow Structure
-The ComfyUI workflow is organized into subgraphs (reusable node groups):
-- **Subgraph ID `7b34ab90-36f9-45ba-a665-71d418f0df18`**: Text to Image (Flux.2 Klein 4B base)
-- **Subgraph ID `a67caa28-5f85-4917-8396-36004960dd30`**: Text to Image (Flux.2 Klein 4B Distilled)
-
-Each subgraph contains these functional groups:
-1. **Models Group**: Loads UNET (diffusion model), CLIP (text encoder), and VAE
-2. **Prompt Group**: Text encoding for positive and negative prompts
-3. **Sampler Group**: Controls the diffusion sampling process (KSampler, scheduler, noise generation)
-4. **Image Size Group**: Defines output dimensions (default: 1024x1024)
-
-### Key Workflow Parameters
-- **Prompt**: User text input for image generation
-- **Negative Prompt**: Optional text to steer generation away from unwanted elements (default: "blurry, ugly, bad, text")
-- **Image Dimensions**: Width and height (default 1024x1024)
-- **Noise Seed**: Random seed for reproducibility
-- **Scheduler Steps**: 20 for base model, 4 for distilled model
-- **CFG Scale**: 5 for base model, 1 for distilled model
-- **Sampler**: Euler method
 
 ## ComfyUI API Integration
 
@@ -140,49 +188,48 @@ The web UI is built with:
 ### Project Structure
 ```
 src/
-├── components/          # Reusable UI components
-│   ├── PromptInput.jsx  # Multiline prompt text input
-│   ├── NegativePromptInput.jsx  # Optional negative prompt with checkbox
-│   ├── ParameterControls.jsx  # Dimension, seed, and model controls
-│   ├── ImageDisplay.jsx # Image display with download button
-│   └── ProgressBar.jsx  # Real-time progress indicator
-├── workflows/           # Workflow-specific components (extensible)
-│   └── TextToImage.jsx  # Main text-to-image workflow UI
-├── services/            # API and utilities
-│   ├── comfyui-api.js   # ComfyUI API client with WebSocket
-│   └── workflow-loader.js # Workflow JSON manipulation utilities
-├── utils/               # Constants and helpers
-│   └── constants.js     # API URLs, default values, node IDs
-├── App.jsx              # Main application component
-├── App.css              # Global dark theme styles
-└── main.jsx             # React entry point
+├── components/                # Reusable UI components
+│   ├── PromptInput.jsx        # Multiline prompt text input
+│   ├── NegativePromptInput.jsx # Optional negative prompt with checkbox (legacy)
+│   ├── ParameterControls.jsx  # Dimension, seed, and model controls (legacy)
+│   ├── ImageDisplay.jsx       # Image display with download button
+│   ├── ImageDropZone.jsx      # Drag-drop PNG metadata loader (legacy)
+│   ├── ProgressBar.jsx        # Real-time progress indicator
+│   ├── SidebarSection.jsx     # Collapsible sidebar section with stage badge (MFS)
+│   ├── FilmFormatSelect.jsx   # Film format preset dropdown (MFS)
+│   ├── LoRAControls.jsx       # LoRA toggle + strength controls (MFS)
+│   └── StageTabs.jsx          # Three-tab strip for output stages (MFS)
+├── workflows/                 # Workflow-specific components
+│   ├── MediumFormatStudio.jsx # Active: 5-stage darkroom workflow
+│   └── TextToImage.jsx        # Legacy: single-pass text-to-image
+├── services/
+│   ├── comfyui-api.js         # ComfyUI API client with WebSocket
+│   ├── mfs-workflow-builder.js # MFS stage-aware workflow assembly
+│   └── workflow-loader.js     # Legacy workflow JSON manipulation
+├── utils/
+│   ├── constants.js           # API URLs, node IDs, MFS stage mappings
+│   └── png-parser.js          # PNG metadata extraction
+├── App.jsx                    # Root component (renders MediumFormatStudio)
+├── App.css                    # Global dark theme styles
+└── main.jsx                   # React entry point
 ```
 
-### Workflow Parameter Updates
-The application modifies specific nodes in the workflow JSON to update parameters:
+### MFS Workflow Builder Service (`services/mfs-workflow-builder.js`)
 
-| Parameter | Node ID | Field | Description |
-|-----------|---------|-------|-------------|
-| Prompt | 76 | `inputs.value` | PrimitiveStringMultiline for prompt text |
-| Negative Prompt | 75:67 | `inputs.text` | CLIPTextEncode negative prompt (optional) |
-| Width | 75:68 | `inputs.value` | PrimitiveInt for image width |
-| Height | 75:69 | `inputs.value` | PrimitiveInt for image height |
-| Seed | 75:73 | `inputs.noise_seed` | RandomNoise seed value |
-| Model | 75:70 | `inputs.unet_name` | UNETLoader model filename |
-| Steps | 75:62 | `inputs.steps` | Flux2Scheduler step count |
-| CFG | 75:63 | `inputs.cfg` | CFGGuider classifier-free guidance scale |
+The MFS workflow builder handles stage-aware workflow assembly:
 
-Note: Node IDs with `75:` prefix are from subgraph nodes. API format uses `inputs` object instead of `widgets_values` array.
+- `loadMFSWorkflow()` - Load and cache the MFS template from `public/`
+- `buildWorkflowForTarget(fullWorkflow, target, skipWorkPrint, params)` - Build a filtered workflow
+  - `target`: `'contact'` | `'work'` | `'final'` — determines which stages to include
+  - `skipWorkPrint`: if true and target=final, omits stage 4 and rewires stage 5 inputs
+  - `params`: user parameters to inject (prompt, seed, film format, LoRA settings, etc.)
+- `generateRandomSeed()` - Generate random seed (large integer range)
 
-### Automatic Model-Based Settings
-The web UI automatically adjusts generation parameters based on the selected model:
+The builder deep-clones only the included nodes from the template, handles rewiring for skip-work-print mode, and injects user parameters into the appropriate nodes.
 
-| Model | Steps | CFG | Speed | Quality |
-|-------|-------|-----|-------|---------|
-| Flux 2 Klein 4B Distilled | 4 | 1.0 | Fast (~4x faster) | Good |
-| Flux 2 Klein 4B Base | 20 | 5.0 | Slower | Best |
+### Legacy Workflow Parameter Updates (TextToImage)
 
-These settings are applied automatically when a model is selected - no manual adjustment needed.
+The legacy TextToImage workflow modifies nodes with `75:` subgraph prefix. See `services/workflow-loader.js` for details.
 
 ### API Service (`services/comfyui-api.js`)
 The ComfyUI API service provides:
@@ -197,6 +244,7 @@ WebSocket callbacks handle:
 - `onProgress(value, max)` - Progress updates during generation
 - `onExecuting(node, promptId)` - Current executing node
 - `onExecuted(data)` - Node execution complete
+- `onCached(data)` - Nodes served from ComfyUI cache (used by MFS for stage-aware status)
 - `onError(error)` - Connection errors
 - `onClose()` - Connection closed
 
@@ -214,20 +262,24 @@ Utilities for manipulating workflow JSON:
 - `generateRandomSeed()` - Generate random seed value
 
 ### Component Architecture
-Components are designed for reusability across different workflow types:
 
-- **PromptInput** - Reusable for any text-based input workflow
-- **NegativePromptInput** - Optional negative prompt with checkbox toggle (default: "blurry, ugly, bad, text")
-- **ParameterControls** - Handles common parameters (dimensions, seed, model)
-- **ImageDisplay** - Generic image viewer with download
-- **ProgressBar** - Universal progress tracking component
-- **TextToImage** - Workflow-specific component that combines reusable components
+**Shared components** (used by MFS and potentially other workflows):
+- **PromptInput** - Multiline text input for prompts
+- **ImageDisplay** - Image viewer with download button
+- **ProgressBar** - Real-time progress indicator
 
-This architecture allows easy addition of new workflow types (img2img, video, etc.) by:
-1. Creating a new component in `src/workflows/`
-2. Reusing existing UI components
-3. Using the same API service
-4. Adding workflow-specific parameter handling
+**MFS-specific components**:
+- **SidebarSection** - Collapsible section with stage number badge and disabled state
+- **FilmFormatSelect** - Dropdown for medium-format film format presets
+- **LoRAControls** - Two LoRA rows with checkbox toggle + strength input
+- **StageTabs** - Three-tab strip (Contact Print / Work Print / Final Print) with enabled/disabled states
+- **MediumFormatStudio** - Main workflow component with full pipeline state machine
+
+**Legacy components** (kept in repo, not currently imported):
+- **TextToImage** - Original single-pass workflow
+- **NegativePromptInput** - Checkbox-toggled negative prompt
+- **ParameterControls** - Dimensions, seed, model, steps, CFG controls
+- **ImageDropZone** - Drag-and-drop PNG metadata loader
 
 ### Development Commands
 ```bash
@@ -317,18 +369,18 @@ To run the application:
 
 3. **Open browser** to http://127.0.0.1:5173/
 
-4. **Generate images**:
-   - Enter a prompt
-   - Select model (Distilled for speed, Base for quality)
-   - Adjust dimensions if needed
-   - Click "Generate Image"
-   - Watch real-time progress
-   - Download generated images
+4. **Generate images** (Medium Format Studio):
+   - Enter a prompt in Stage 2 (Subject, Style & Format)
+   - Optionally adjust LoRAs in Stage 1, select film format
+   - Click "Expose Contact Print" to generate a quick preview
+   - Evaluate the contact print, then promote to Work Print or Final Print
+   - Use "New Exposure" to reset and start fresh with a new seed
 
 ### Configuration
 - **Vite proxy** - Configured to proxy `/prompt`, `/history`, and `/view` requests to ComfyUI server
 - **WebSocket** - Direct connection to `ws://127.0.0.1:8188/ws` with client ID
-- **Workflow location** - Stored in `public/image_flux2_klein_text_to_image_api.json` (API format, not UI format)
+- **MFS workflow** - Stored in `public/medium_format_studio_api.json` (API format)
+- **Legacy workflow** - Stored in `public/image_flux2_klein_text_to_image_api.json` (API format)
 
 ### Error Handling
 The application handles common error scenarios:
@@ -392,61 +444,35 @@ If the image generates successfully (visible in ComfyUI output folder) but doesn
 
 The application logs all WebSocket messages and image fetch attempts to the console for debugging.
 
-## Complete Generation Flow
+## MFS Generation Flow
 
-Understanding the complete flow from button click to image display:
+### Contact Print (stages 1-3)
+1. User enters prompt, configures LoRAs, selects film format, clicks "Expose Contact Print"
+2. `buildWorkflowForTarget(template, 'contact', false, params)` — includes only stage 1-3 nodes
+3. POST to `/prompt`, connect WebSocket, monitor progress
+4. On completion: fetch `/history/{promptId}`, extract image from `outputs['17']`
+5. Set `pipelineState = 'contact_ready'`, display in Contact Print tab, lock parameters
 
-1. **User Action**: Click "Generate Image" button
-   - Validates prompt is not empty
-   - Resets progress state and error messages
+### Promote to Work Print (stages 1-4)
+1. User clicks "Promote to Work Print"
+2. `buildWorkflowForTarget(template, 'work', false, params)` — includes stages 1-4
+3. ComfyUI **caches stages 1-3** (same parameters), only executes stage 4
+4. On completion: extract image from `outputs['48']`, switch to Work Print tab
 
-2. **Server Check**: Verify ComfyUI is running
-   - Calls `/system_stats` endpoint
-   - Fails fast with clear error if server is down
+### Promote to Final Print (stages 1-5 or 1-3+5)
+1. If promoting from contact (no work print yet): `skipWorkPrint = true`
+   - Stage 4 nodes omitted; nodes 80 and 62 rewired from node 74 → node 5
+2. If promoting from work print: `skipWorkPrint = false` (all 5 stages)
+3. On completion: extract image from `outputs['63']`, switch to Final Print tab
 
-3. **Workflow Preparation**:
-   - Load base workflow from `public/image_flux2_klein_text_to_image_api.json`
-   - Determine model settings (steps/CFG based on model selection)
-   - Update workflow parameters: prompt, width, height, seed, model, steps, CFG
-   - Clone workflow to avoid mutations
+### Image Retrieval
+Unlike the legacy TextToImage (which grabs the first image from any output node), MFS looks up the **specific SaveImage node** for each stage:
+- Contact Print: `outputs['17']`
+- Work Print: `outputs['48']`
+- Final Print: `outputs['63']`
 
-4. **Queue Workflow**:
-   - POST to `/prompt` endpoint with workflow JSON
-   - Receive `prompt_id` and store it
-   - Check for `node_errors` in response
-
-5. **WebSocket Connection**:
-   - Connect to `ws://127.0.0.1:8188/ws?clientId=xxx`
-   - Listen for messages: `progress`, `executing`, `executed`, `status`
-   - Update UI progress bar in real-time
-
-6. **Progress Tracking**:
-   - Receive `progress` messages with `{value, max}` (e.g., 20/20)
-   - Update progress bar display
-   - When `value === max`, trigger fallback image fetch after 1 second
-
-7. **Completion Detection** (dual mechanism):
-   - **Primary**: WebSocket `executing` message with `node: null`
-   - **Fallback**: Progress reaches 100% → wait 1 second → fetch image
-   - Prevents duplicate fetches with `fetchingImageRef` flag
-
-8. **Image Retrieval**:
-   - GET from `/history/{prompt_id}`
-   - Parse `outputs` to find `SaveImage` node
-   - Extract image info: `{filename, subfolder, type}`
-   - Construct URL: `/view?filename=X&subfolder=Y&type=output`
-
-9. **Display**:
-   - Set image URL in React state
-   - ImageDisplay component renders the image
-   - Show success status message
-   - Close WebSocket connection
-
-10. **Cleanup**:
-    - Set `isGenerating = false`
-    - Clear status message after 3 seconds
-    - Close WebSocket
-    - Reset fetch flag for next generation
+### New Exposure
+Resets `pipelineState` to idle, generates a new seed, clears all images, unlocks parameters.
 
 ## Debugging Tips
 
@@ -538,8 +564,8 @@ All WebSocket messages and image fetch operations are logged to the browser cons
 - ✅ Server status checking
 - ✅ CORS configuration
 
-### Current Status: MVP Complete
-The application successfully generates images with both Flux 2 Klein model variants, displays them in the UI, and provides a polished user experience with real-time progress tracking and automatic parameter optimization.
+### Current Status: Medium Format Studio Implemented
+The application has been upgraded from the single-pass TextToImage workflow to the multi-stage Medium Format Studio pipeline. MFS supports progressive generation (contact → work → final prints), ComfyUI execution caching for efficient promotion, LoRA controls, film format presets, and stage-aware progress display.
 
 ## Image Gallery Module (Planned)
 

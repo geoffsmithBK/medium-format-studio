@@ -1,0 +1,213 @@
+.mfs {
+  display: flex;
+  height: 100vh;
+  background: #121212;
+}
+
+.mfs-sidebar {
+  width: 400px;
+  flex-shrink: 0;
+  padding: 2rem;
+  background: #1a1a1a;
+  border-right: 1px solid #2a2a2a;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mfs-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mfs-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Form controls ─────────────────────────────────────────────────── */
+
+.mfs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mfs-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.mfs-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 60px;
+  transition: border-color 0.2s;
+}
+
+.mfs-textarea:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.mfs-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mfs-textarea::placeholder {
+  color: #707070;
+}
+
+.mfs-input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+
+.mfs-input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.mfs-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Seed row ──────────────────────────────────────────────────────── */
+
+.mfs-seed-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.mfs-seed-field {
+  flex: 1;
+}
+
+.mfs-random-btn {
+  padding: 0.625rem 0.875rem;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 0.813rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.mfs-random-btn:hover:not(:disabled) {
+  background: #333333;
+  border-color: #505050;
+}
+
+.mfs-random-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Action buttons ────────────────────────────────────────────────── */
+
+.mfs-action-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.mfs-action-btn:hover:not(:disabled) {
+  background: #333333;
+  border-color: #505050;
+}
+
+.mfs-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mfs-action-primary {
+  background: #0066cc;
+  border-color: #0066cc;
+  color: #ffffff;
+}
+
+.mfs-action-primary:hover:not(:disabled) {
+  background: #0052a3;
+  border-color: #0052a3;
+}
+
+/* ── New Exposure ──────────────────────────────────────────────────── */
+
+.mfs-new-exposure-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: transparent;
+  border: 2px solid #0066cc;
+  border-radius: 6px;
+  color: #0066cc;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 0.5rem;
+}
+
+.mfs-new-exposure-btn:hover {
+  background: rgba(0, 102, 204, 0.1);
+}
+
+/* ── Note text ─────────────────────────────────────────────────────── */
+
+.mfs-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #707070;
+  font-style: italic;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .mfs {
+    flex-direction: column;
+  }
+
+  .mfs-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #2a2a2a;
+  }
+}

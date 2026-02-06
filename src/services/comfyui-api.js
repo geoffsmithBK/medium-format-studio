@@ -125,6 +125,9 @@ export function connectWebSocket(clientId, callbacks = {}) {
 
         case 'execution_cached':
           console.log('Execution cached:', data);
+          if (callbacks.onCached) {
+            callbacks.onCached(data);
+          }
           break;
 
         case 'status':

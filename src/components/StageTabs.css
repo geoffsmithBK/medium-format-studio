@@ -1,0 +1,44 @@
+.stage-tabs {
+  display: flex;
+  gap: 2px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 3px;
+  margin-bottom: 1rem;
+}
+
+.stage-tab {
+  flex: 1;
+  padding: 0.625rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #909090;
+  font-family: inherit;
+  font-size: 0.813rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.stage-tab:hover:not(:disabled) {
+  color: #e0e0e0;
+  background: #252525;
+}
+
+.stage-tab-active {
+  background: #0066cc;
+  color: #ffffff;
+}
+
+.stage-tab-active:hover:not(:disabled) {
+  background: #0052a3;
+  color: #ffffff;
+}
+
+.stage-tab-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

@@ -1,0 +1,649 @@
+{
+  "1": {
+    "inputs": {
+      "sampler_name": "res_multistep"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "2": {
+    "inputs": {
+      "steps": 6,
+      "width": [
+        "19",
+        1
+      ],
+      "height": [
+        "19",
+        2
+      ]
+    },
+    "class_type": "Flux2Scheduler",
+    "_meta": {
+      "title": "Flux2Scheduler"
+    }
+  },
+  "3": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "18",
+        0
+      ],
+      "positive": [
+        "13",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFGGuider"
+    }
+  },
+  "4": {
+    "inputs": {
+      "noise": [
+        "10",
+        0
+      ],
+      "guider": [
+        "3",
+        0
+      ],
+      "sampler": [
+        "1",
+        0
+      ],
+      "sigmas": [
+        "2",
+        0
+      ],
+      "latent_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "5": {
+    "inputs": {
+      "samples": [
+        "4",
+        0
+      ],
+      "vae": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "6": {
+    "inputs": {
+      "width": [
+        "19",
+        1
+      ],
+      "height": [
+        "19",
+        2
+      ],
+      "batch_size": [
+        "55",
+        0
+      ]
+    },
+    "class_type": "EmptyFlux2LatentImage",
+    "_meta": {
+      "title": "Empty Flux 2 Latent"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "",
+      "clip": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "We don't see..."
+    }
+  },
+  "10": {
+    "inputs": {
+      "noise_seed": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "11": {
+    "inputs": {
+      "clip_name": "qwen_3_8b_fp8mixed.safetensors",
+      "type": "flux2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "12": {
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "13": {
+    "inputs": {
+      "text": "Subject, scene, and setting:\nClose up portrait of a Terminator robot standing in the flaming ruins of a post-apocalyptic city. The camera sees him from a slight down-angle, above and to one side at a distance of about a meter. He is positioned on the rule of thirds scene-right and is looking directly into the camera. Only one of his eye sockets is lit with a glowing red LED; the other is abyssally dark.\n\nStyle:\nCinematic Movie Still, reminiscent of 80s and 90s-era Hollywood blockbuster films. The mood is ominous, the look is gorgeous, the scope and scale epic.\n\nEquipment, materials, and technical details:\nHyperdetailed Photography, shallow depth of field, vignette, one longitudinal lens flare emanating from the lit eye in a complementary color. Highly detailed, intricate metalwork, high budget Hollywood movie, bokeh, cinemascope, panavision, anamorphic. The shot is a clean plate with no grain or noise to allow for further post-processing and sweetening.",
+      "clip": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "We see..."
+    }
+  },
+  "16": {
+    "inputs": {
+      "seed": 1006130594677508
+    },
+    "class_type": "Seed (rgthree)",
+    "_meta": {
+      "title": "Seed (rgthree)"
+    }
+  },
+  "17": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Contact Print"
+    }
+  },
+  "18": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "FluxKlein/detail_slider_klein_9b_20260123_065513.safetensors",
+        "strength": 7
+      },
+      "lora_2": {
+        "on": true,
+        "lora": "FluxKlein/klein_slider_chiaroscuro.safetensors",
+        "strength": 0.8
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "30",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Filtration (LoRA stack)"
+    }
+  },
+  "19": {
+    "inputs": {
+      "dimensions": "Cinemascope - 1536x640",
+      "invert": false,
+      "batch_size": [
+        "55",
+        0
+      ]
+    },
+    "class_type": "EmptyLatentImageCustomPresets",
+    "_meta": {
+      "title": "Film Format / Aspect Ratio"
+    }
+  },
+  "30": {
+    "inputs": {
+      "unet_name": "flux-2-klein-9b.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "36": {
+    "inputs": {
+      "upscale_method": "area",
+      "scale_by": [
+        "52",
+        0
+      ],
+      "samples": [
+        "46",
+        0
+      ]
+    },
+    "class_type": "LatentUpscaleBy",
+    "_meta": {
+      "title": "Upscale Latent By"
+    }
+  },
+  "37": {
+    "inputs": {
+      "noise": [
+        "10",
+        0
+      ],
+      "guider": [
+        "3",
+        0
+      ],
+      "sampler": [
+        "38",
+        0
+      ],
+      "sigmas": [
+        "43",
+        1
+      ],
+      "latent_image": [
+        "36",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "38": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "39": {
+    "inputs": {
+      "steps": 4,
+      "width": [
+        "50",
+        0
+      ],
+      "height": [
+        "53",
+        0
+      ]
+    },
+    "class_type": "Flux2Scheduler",
+    "_meta": {
+      "title": "Flux2Scheduler"
+    }
+  },
+  "43": {
+    "inputs": {
+      "denoise": 0.5,
+      "sigmas": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "SplitSigmasDenoise",
+    "_meta": {
+      "title": "SplitSigmasDenoise"
+    }
+  },
+  "46": {
+    "inputs": {
+      "batch_index": 1,
+      "length": 1,
+      "samples": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "LatentFromBatch",
+    "_meta": {
+      "title": "LatentFromBatch"
+    }
+  },
+  "47": {
+    "inputs": {
+      "samples": [
+        "37",
+        0
+      ],
+      "vae": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "48": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "74",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Work Print"
+    }
+  },
+  "50": {
+    "inputs": {
+      "operation": "*",
+      "a": [
+        "19",
+        1
+      ],
+      "b": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "BasicMath",
+    "_meta": {
+      "title": "Upscaled Width"
+    }
+  },
+  "52": {
+    "inputs": {
+      "value": 1.5
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "Upscale Factor"
+    }
+  },
+  "53": {
+    "inputs": {
+      "operation": "*",
+      "a": [
+        "19",
+        2
+      ],
+      "b": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "BasicMath",
+    "_meta": {
+      "title": "Upscaled Height"
+    }
+  },
+  "54": {
+    "inputs": {
+      "batch_index": 0,
+      "length": 1
+    },
+    "class_type": "ImageFromBatch",
+    "_meta": {
+      "title": "ImageFromBatch"
+    }
+  },
+  "55": {
+    "inputs": {
+      "value": 1
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Batch Size"
+    }
+  },
+  "60": {
+    "inputs": {
+      "model": "seedvr2_ema_7b_sharp_fp16.safetensors",
+      "device": "mps",
+      "blocks_to_swap": 0,
+      "swap_io_components": false,
+      "offload_device": "mps",
+      "cache_model": false,
+      "attention_mode": "sdpa"
+    },
+    "class_type": "SeedVR2LoadDiTModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load DiT Model"
+    }
+  },
+  "61": {
+    "inputs": {
+      "model": "ema_vae_fp16.safetensors",
+      "device": "mps",
+      "encode_tiled": true,
+      "encode_tile_size": 1024,
+      "encode_tile_overlap": 128,
+      "decode_tiled": true,
+      "decode_tile_size": 1024,
+      "decode_tile_overlap": 128,
+      "tile_debug": "false",
+      "offload_device": "none",
+      "cache_model": false
+    },
+    "class_type": "SeedVR2LoadVAEModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load VAE Model"
+    }
+  },
+  "62": {
+    "inputs": {
+      "seed": 44,
+      "resolution": [
+        "79",
+        0
+      ],
+      "max_resolution": [
+        "78",
+        0
+      ],
+      "batch_size": 1,
+      "uniform_batch_size": false,
+      "color_correction": "lab",
+      "temporal_overlap": 0,
+      "prepend_frames": 0,
+      "input_noise_scale": 0,
+      "latent_noise_scale": 0,
+      "offload_device": "mps",
+      "enable_debug": true,
+      "image": [
+        "74",
+        0
+      ],
+      "dit": [
+        "60",
+        0
+      ],
+      "vae": [
+        "61",
+        0
+      ]
+    },
+    "class_type": "SeedVR2VideoUpscaler",
+    "_meta": {
+      "title": "SeedVR2 Video Upscaler (v2.5.24)"
+    }
+  },
+  "63": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "75",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "71": {
+    "inputs": {
+      "rgthree_comparer": {
+        "images": [
+          {
+            "name": "A",
+            "selected": true,
+            "url": "/api/view?filename=rgthree.compare._temp_nqrvd_00001_.png&type=temp&subfolder=&rand=0.32641910021534337"
+          },
+          {
+            "name": "B",
+            "selected": true,
+            "url": "/api/view?filename=rgthree.compare._temp_nqrvd_00002_.png&type=temp&subfolder=&rand=0.4338188854649274"
+          }
+        ]
+      },
+      "image_a": [
+        "75",
+        0
+      ],
+      "image_b": [
+        "74",
+        0
+      ]
+    },
+    "class_type": "Image Comparer (rgthree)",
+    "_meta": {
+      "title": "Image Comparer (rgthree)"
+    }
+  },
+  "74": {
+    "inputs": {
+      "sharpen_radius": 1,
+      "sigma": 0.35,
+      "alpha": 0.35,
+      "image": [
+        "47",
+        0
+      ]
+    },
+    "class_type": "ImageSharpen",
+    "_meta": {
+      "title": "ImageSharpen"
+    }
+  },
+  "75": {
+    "inputs": {
+      "sharpen_radius": 1,
+      "sigma": 0.35,
+      "alpha": 0.35,
+      "image": [
+        "62",
+        0
+      ]
+    },
+    "class_type": "ImageSharpen",
+    "_meta": {
+      "title": "ImageSharpen"
+    }
+  },
+  "76": {
+    "inputs": {
+      "operation": "*",
+      "a": [
+        "80",
+        1
+      ],
+      "b": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "BasicMath",
+    "_meta": {
+      "title": "Upscaled Height"
+    }
+  },
+  "77": {
+    "inputs": {
+      "operation": "*",
+      "a": [
+        "80",
+        0
+      ],
+      "b": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "BasicMath",
+    "_meta": {
+      "title": "Upscaled Width"
+    }
+  },
+  "78": {
+    "inputs": {
+      "round_method": "round",
+      "any": [
+        "77",
+        0
+      ]
+    },
+    "class_type": "ToInt",
+    "_meta": {
+      "title": "To Int | Basic"
+    }
+  },
+  "79": {
+    "inputs": {
+      "round_method": "round",
+      "any": [
+        "76",
+        0
+      ]
+    },
+    "class_type": "ToInt",
+    "_meta": {
+      "title": "To Int | Basic"
+    }
+  },
+  "80": {
+    "inputs": {
+      "image": [
+        "74",
+        0
+      ]
+    },
+    "class_type": "GetImageSize+",
+    "_meta": {
+      "title": "🔧 Get Image Size"
+    }
+  }
+}
