@@ -2,9 +2,22 @@ import React from 'react';
 import './FilmFormatSelect.css';
 
 /**
- * Dropdown selector for medium-format film format presets.
+ * Parse WxH from a format value string like "6x7 - 1120x928".
  */
-export default function FilmFormatSelect({ value, onChange, formats, disabled }) {
+function parseDims(value) {
+  const m = value.match(/(\d+)x(\d+)$/);
+  return m ? { w: parseInt(m[1], 10), h: parseInt(m[2], 10) } : null;
+}
+
+/**
+ * Dropdown selector for medium-format film format presets,
+ * with Portrait toggle and pixel dimension display.
+ */
+export default function FilmFormatSelect({ value, onChange, formats, portrait, onPortraitChange, filmBorders, onFilmBordersChange, disabled }) {
+  const dims = parseDims(value);
+  const displayW = dims ? (portrait ? dims.h : dims.w) : null;
+  const displayH = dims ? (portrait ? dims.w : dims.h) : null;
+
   return (
     <div className="film-format-container">
       <label htmlFor="film-format" className="film-format-label">
@@ -17,12 +30,41 @@ export default function FilmFormatSelect({ value, onChange, formats, disabled })
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
       >
-        {formats.map((f) => (
-          <option key={f.value} value={f.value}>
-            {f.label}
-          </option>
-        ))}
+        {formats.map((f) => {
+          const d = parseDims(f.value);
+          const dimStr = d ? ` (${d.w}x${d.h})` : '';
+          return (
+            <option key={f.value} value={f.value}>
+              {f.label}{dimStr}
+            </option>
+          );
+        })}
       </select>
+      <div className="film-format-options">
+        <label className="film-format-checkbox-label">
+          <input
+            type="checkbox"
+            className="film-format-checkbox"
+            checked={portrait}
+            onChange={(e) => onPortraitChange(e.target.checked)}
+            disabled={disabled}
+          />
+          Portrait
+        </label>
+        <label className="film-format-checkbox-label">
+          <input
+            type="checkbox"
+            className="film-format-checkbox"
+            checked={filmBorders}
+            onChange={(e) => onFilmBordersChange(e.target.checked)}
+            disabled={disabled}
+          />
+          Film Borders
+        </label>
+        {displayW && (
+          <span className="film-format-dims">{displayW} x {displayH}</span>
+        )}
+      </div>
     </div>
   );
 }

@@ -68,6 +68,8 @@ export default function MediumFormatStudio() {
   const [lora1Strength, setLora1Strength] = useState(MFS_LORA_DEFAULTS.lora1.defaultStrength);
   const [lora2Enabled, setLora2Enabled] = useState(MFS_LORA_DEFAULTS.lora2.defaultEnabled);
   const [lora2Strength, setLora2Strength] = useState(MFS_LORA_DEFAULTS.lora2.defaultStrength);
+  const [portrait, setPortrait] = useState(false);
+  const [filmBorders, setFilmBorders] = useState(false);
   const [upscaleFactor, setUpscaleFactor] = useState(1.5);
   const [model, setModel] = useState(MFS_DEFAULT_MODEL);
   const [lora1Filename, setLora1Filename] = useState(MFS_LORA_DEFAULTS.lora1.filename);
@@ -197,12 +199,22 @@ export default function MediumFormatStudio() {
   }[activeTab] || '';
 
   // Parse aspect ratio from film format string (e.g. "6x7 - 1120x928")
-  const filmAspectRatio = (() => {
+  const filmDims = (() => {
     const match = filmFormat.match(/(\d+)x(\d+)$/);
-    return match ? `${match[1]} / ${match[2]}` : undefined;
+    if (!match) return null;
+    const w = parseInt(match[1], 10), h = parseInt(match[2], 10);
+    return portrait ? { w: h, h: w } : { w, h };
   })();
 
+  const filmAspectRatio = filmDims ? `${filmDims.w} / ${filmDims.h}` : undefined;
+
   const isGalleryTab = activeTab === 'gallery';
+
+  // Upscaled dimensions for stages 4/5 display
+  const upscaledDims = filmDims ? {
+    w: Math.round(filmDims.w * upscaleFactor),
+    h: Math.round(filmDims.h * upscaleFactor),
+  } : null;
 
   // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -211,6 +223,8 @@ export default function MediumFormatStudio() {
       prompt,
       negativePrompt,
       filmFormat,
+      portrait,
+      filmBorders,
       seed,
       lora1Enabled,
       lora1Strength,
@@ -528,9 +542,11 @@ export default function MediumFormatStudio() {
                   lora1Enabled={lora1Enabled}
                   lora1Strength={lora1Strength}
                   lora1Name={MFS_LORA_DEFAULTS.lora1.name}
+                  lora1Min={0} lora1Max={10} lora1Step={1}
                   lora2Enabled={lora2Enabled}
                   lora2Strength={lora2Strength}
                   lora2Name={MFS_LORA_DEFAULTS.lora2.name}
+                  lora2Min={0} lora2Max={1} lora2Step={0.05}
                   onLora1EnabledChange={setLora1Enabled}
                   onLora1StrengthChange={setLora1Strength}
                   onLora2EnabledChange={setLora2Enabled}
@@ -551,6 +567,10 @@ export default function MediumFormatStudio() {
                   value={filmFormat}
                   onChange={setFilmFormat}
                   formats={MFS_FILM_FORMATS}
+                  portrait={portrait}
+                  onPortraitChange={setPortrait}
+                  filmBorders={filmBorders}
+                  onFilmBordersChange={setFilmBorders}
                   disabled={paramsLocked}
                 />
               </SidebarSection>
@@ -619,6 +639,9 @@ export default function MediumFormatStudio() {
                 >
                   {pipelineState === 'generating_work' ? 'Promoting...' : 'Promote to Work Print'}
                 </button>
+                {upscaledDims && (
+                  <p className="mfs-dims-note">New dimensions: {upscaledDims.w} x {upscaledDims.h}</p>
+                )}
               </SidebarSection>
 
               {/* Stage 5: Scan / Digital C-Print */}
@@ -637,6 +660,9 @@ export default function MediumFormatStudio() {
                 >
                   {pipelineState === 'generating_final' ? 'Promoting...' : 'Promote to Final Print'}
                 </button>
+                {upscaledDims && (
+                  <p className="mfs-dims-note">New dimensions: {upscaledDims.w} x {upscaledDims.h}</p>
+                )}
                 {!workPrintUrl && contactPrintUrl && (
                   <p className="mfs-note">Skips Work Print stage</p>
                 )}

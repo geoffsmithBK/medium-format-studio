@@ -99,6 +99,18 @@ export function buildWorkflowForTarget(fullWorkflow, target, skipWorkPrint, para
     if (workflow['62']) {
       workflow['62'].inputs.image = ['5', 0];
     }
+    // Keep node 75 (ImageSharpen) — contact print wasn't sharpened,
+    // so Stage 5 needs its own sharpening pass.
+  }
+
+  // 5b. Conditional sharpening: when Stage 4 was executed (not skipped),
+  //     the image is already sharpened by node 74. Bypass node 75 in Stage 5
+  //     to avoid double-sharpening.
+  if (target === 'final' && !skipWorkPrint) {
+    if (workflow['63']) {
+      workflow['63'].inputs.images = ['62', 0];
+    }
+    delete workflow['75'];
   }
 
   // 6. Apply user parameters
@@ -113,9 +125,13 @@ export function buildWorkflowForTarget(fullWorkflow, target, skipWorkPrint, para
 function applyParams(workflow, params) {
   if (!params) return;
 
-  // Positive prompt (node 13)
+  // Positive prompt (node 13) — append film borders text if enabled
   if (params.prompt !== undefined && workflow[MFS_NODE_IDS.POSITIVE_PROMPT]) {
-    workflow[MFS_NODE_IDS.POSITIVE_PROMPT].inputs.text = params.prompt;
+    let promptText = params.prompt;
+    if (params.filmBorders) {
+      promptText += ' Slightly rough, un-even black border as from an unfiled negative carrier with film edge-markings.';
+    }
+    workflow[MFS_NODE_IDS.POSITIVE_PROMPT].inputs.text = promptText;
   }
 
   // Negative prompt (node 7)
@@ -123,9 +139,10 @@ function applyParams(workflow, params) {
     workflow[MFS_NODE_IDS.NEGATIVE_PROMPT].inputs.text = params.negativePrompt;
   }
 
-  // Film format (node 19)
+  // Film format (node 19) + portrait mode (invert dimensions)
   if (params.filmFormat !== undefined && workflow[MFS_NODE_IDS.FILM_FORMAT]) {
     workflow[MFS_NODE_IDS.FILM_FORMAT].inputs.dimensions = params.filmFormat;
+    workflow[MFS_NODE_IDS.FILM_FORMAT].inputs.invert = !!params.portrait;
   }
 
   // Seed (node 16)

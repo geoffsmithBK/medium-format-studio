@@ -266,6 +266,12 @@
   font-style: italic;
 }
 
+.mfs-dims-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #606060;
+}
+
 /* ── Responsive ────────────────────────────────────────────────────── */
 
 @media (max-width: 1024px) {

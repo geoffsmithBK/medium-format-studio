@@ -2,11 +2,11 @@ import React from 'react';
 import './LoRAControls.css';
 
 /**
- * Two-row LoRA control: checkbox toggle + label + strength input.
+ * Two-row LoRA control: checkbox toggle + label + strength input with range enforcement.
  */
 export default function LoRAControls({
-  lora1Enabled, lora1Strength, lora1Name,
-  lora2Enabled, lora2Strength, lora2Name,
+  lora1Enabled, lora1Strength, lora1Name, lora1Min, lora1Max, lora1Step,
+  lora2Enabled, lora2Strength, lora2Name, lora2Min, lora2Max, lora2Step,
   onLora1EnabledChange, onLora1StrengthChange,
   onLora2EnabledChange, onLora2StrengthChange,
   disabled,
@@ -18,6 +18,9 @@ export default function LoRAControls({
         label={lora1Name}
         enabled={lora1Enabled}
         strength={lora1Strength}
+        min={lora1Min}
+        max={lora1Max}
+        step={lora1Step}
         onEnabledChange={onLora1EnabledChange}
         onStrengthChange={onLora1StrengthChange}
         disabled={disabled}
@@ -27,6 +30,9 @@ export default function LoRAControls({
         label={lora2Name}
         enabled={lora2Enabled}
         strength={lora2Strength}
+        min={lora2Min}
+        max={lora2Max}
+        step={lora2Step}
         onEnabledChange={onLora2EnabledChange}
         onStrengthChange={onLora2StrengthChange}
         disabled={disabled}
@@ -35,7 +41,16 @@ export default function LoRAControls({
   );
 }
 
-function LoRARow({ id, label, enabled, strength, onEnabledChange, onStrengthChange, disabled }) {
+function LoRARow({ id, label, enabled, strength, min = 0, max = 10, step = 0.1, onEnabledChange, onStrengthChange, disabled }) {
+  const rangeLabel = `(${min}–${max})`;
+
+  function handleChange(e) {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = min;
+    val = Math.min(max, Math.max(min, val));
+    onStrengthChange(val);
+  }
+
   return (
     <div className="lora-row">
       <input
@@ -46,15 +61,19 @@ function LoRARow({ id, label, enabled, strength, onEnabledChange, onStrengthChan
         onChange={(e) => onEnabledChange(e.target.checked)}
         disabled={disabled}
       />
-      <label htmlFor={id} className="lora-label">{label}</label>
+      <label htmlFor={id} className="lora-label">
+        {label} <span className="lora-range">{rangeLabel}</span>
+      </label>
       <input
         type="number"
         className="lora-strength"
         value={strength}
-        onChange={(e) => onStrengthChange(parseFloat(e.target.value) || 0)}
-        step={0.1}
+        onChange={handleChange}
+        step={step}
+        min={min}
+        max={max}
         disabled={disabled || !enabled}
-        title="Strength"
+        title={`Strength ${rangeLabel}`}
       />
     </div>
   );
