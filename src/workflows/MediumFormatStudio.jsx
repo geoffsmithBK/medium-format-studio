@@ -32,6 +32,7 @@ import {
   MFS_DEFAULT_FILM_FORMAT,
   MFS_LORA_DEFAULTS,
   MFS_OUTPUT_NODES,
+  MFS_NODE_IDS,
   MFS_NODE_STAGE_NAMES,
   MFS_MODELS,
   MFS_DEFAULT_MODEL,
@@ -425,9 +426,27 @@ export default function MediumFormatStudio() {
     fetchingImageRef.current = false;
     promptIdRef.current = null;
 
-    // Load params from selected image
+    // Load params from selected image metadata
     if (selectedMetadata.prompt) setPrompt(selectedMetadata.prompt);
     if (selectedMetadata.seed != null) setSeed(selectedMetadata.seed);
+    if (selectedMetadata.negativePrompt) setNegativePrompt(selectedMetadata.negativePrompt);
+
+    // Restore model if it matches a known model
+    if (selectedMetadata.model) {
+      const knownModel = MFS_MODELS.find((m) => m.filename === selectedMetadata.model);
+      if (knownModel) setModel(knownModel.filename);
+    }
+
+    // Restore film format directly from workflow node 19 (EmptyLatentImageCustomPresets)
+    const workflow = selectedGalleryItem?.workflow;
+    if (workflow) {
+      const formatNode = workflow[MFS_NODE_IDS.FILM_FORMAT];
+      if (formatNode?.inputs?.dimensions) {
+        const dims = formatNode.inputs.dimensions;
+        const knownFormat = MFS_FILM_FORMATS.find((f) => f.value === dims);
+        if (knownFormat) setFilmFormat(knownFormat.value);
+      }
+    }
 
     // Switch to Contact Print tab
     setActiveTab('contact');

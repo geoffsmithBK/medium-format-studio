@@ -355,8 +355,8 @@ export function extractParametersFromComfyUIWorkflow(workflow, imageWidth, image
 
       // Extract model
       if (!params.model) {
-        // UNETLoader (Flux)
-        if (node.class_type === 'UNETLoader' && node.inputs?.unet_name) {
+        // UNETLoader or UnetLoaderGGUF (Flux)
+        if ((node.class_type === 'UNETLoader' || node.class_type === 'UnetLoaderGGUF') && node.inputs?.unet_name) {
           params.model = node.inputs.unet_name;
         }
         // CheckpointLoaderSimple (SDXL, SD 1.5)
