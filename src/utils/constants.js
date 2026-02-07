@@ -1,6 +1,28 @@
 // ComfyUI API configuration
-export const API_BASE = 'http://127.0.0.1:8188';
-export const WS_BASE = 'ws://127.0.0.1:8188';
+const DEFAULT_SERVER = '127.0.0.1:8188';
+const LS_KEY = 'comfyui_server_url';
+
+export function getServerUrl() {
+  return localStorage.getItem(LS_KEY) || DEFAULT_SERVER;
+}
+
+export function setServerUrl(url) {
+  if (!url || url === DEFAULT_SERVER) {
+    localStorage.removeItem(LS_KEY);
+  } else {
+    localStorage.setItem(LS_KEY, url);
+  }
+}
+
+export function getApiBase() {
+  return `http://${getServerUrl()}`;
+}
+
+export function getWsBase() {
+  return `ws://${getServerUrl()}`;
+}
+
+export const DEFAULT_SERVER_URL = DEFAULT_SERVER;
 
 // Default workflow parameters
 export const DEFAULT_WIDTH = 1024;

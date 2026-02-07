@@ -1,4 +1,4 @@
-import { API_BASE, WS_BASE } from '../utils/constants';
+import { getApiBase, getWsBase } from '../utils/constants';
 
 /**
  * Generate a unique client ID for WebSocket connection
@@ -15,7 +15,7 @@ export function generateClientId() {
  */
 export async function queuePrompt(workflow, clientId) {
   try {
-    const response = await fetch(`${API_BASE}/prompt`, {
+    const response = await fetch(`${getApiBase()}/prompt`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ export async function queuePrompt(workflow, clientId) {
  */
 export async function getHistory(promptId) {
   try {
-    const response = await fetch(`${API_BASE}/history/${promptId}`);
+    const response = await fetch(`${getApiBase()}/history/${promptId}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -76,7 +76,7 @@ export function getImageUrl(filename, subfolder, type = 'output') {
     params.append('subfolder', subfolder);
   }
 
-  return `${API_BASE}/view?${params.toString()}`;
+  return `${getApiBase()}/view?${params.toString()}`;
 }
 
 /**
@@ -91,7 +91,7 @@ export function getImageUrl(filename, subfolder, type = 'output') {
  * @returns {WebSocket} WebSocket instance (call .close() to disconnect)
  */
 export function connectWebSocket(clientId, callbacks = {}) {
-  const ws = new WebSocket(`${WS_BASE}/ws?clientId=${clientId}`);
+  const ws = new WebSocket(`${getWsBase()}/ws?clientId=${clientId}`);
 
   ws.onopen = () => {
     console.log('WebSocket connected');
@@ -164,7 +164,7 @@ export function connectWebSocket(clientId, callbacks = {}) {
  * @returns {Promise<string[]>} Array of LoRA filenames available on the server
  */
 export async function getAvailableLoRAs() {
-  const response = await fetch(`${API_BASE}/object_info/LoraLoader`);
+  const response = await fetch(`${getApiBase()}/object_info/LoraLoader`);
   if (!response.ok) {
     throw new Error(`Failed to fetch LoRA list: ${response.status}`);
   }
@@ -178,7 +178,7 @@ export async function getAvailableLoRAs() {
  */
 export async function checkServerStatus() {
   try {
-    const response = await fetch(`${API_BASE}/system_stats`, {
+    const response = await fetch(`${getApiBase()}/system_stats`, {
       method: 'GET',
     });
     return response.ok;

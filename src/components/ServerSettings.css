@@ -1,0 +1,105 @@
+.server-settings {
+  position: relative;
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.server-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #606060;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.server-settings-btn:hover {
+  color: #e0e0e0;
+  border-color: #404040;
+}
+
+.server-settings-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.server-settings-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 320px;
+  padding: 0.75rem;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.server-settings-header {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.server-settings-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.server-settings-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  background: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-family: 'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+}
+
+.server-settings-input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.server-settings-save {
+  padding: 0.4rem 0.75rem;
+  background: #0066cc;
+  border: none;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.server-settings-save:hover {
+  background: #0077ee;
+}
+
+.server-settings-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #909090;
+}
+
+.server-settings-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

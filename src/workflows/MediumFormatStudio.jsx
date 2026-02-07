@@ -9,6 +9,7 @@ import StageTabs from '../components/StageTabs';
 import ContactSheet from '../components/ContactSheet';
 import MetadataPanel from '../components/MetadataPanel';
 import FullscreenViewer from '../components/FullscreenViewer';
+import ServerSettings from '../components/ServerSettings';
 import {
   loadMFSWorkflow,
   buildWorkflowForTarget,
@@ -634,6 +635,7 @@ export default function MediumFormatStudio() {
         )}
 
         {error && <div className="error-message">{error}</div>}
+        <ServerSettings />
       </div>
 
       {/* ── Content Area ────────────────────────────────────────── */}

@@ -1,4 +1,4 @@
-import { API_BASE } from '../utils/constants';
+import { getApiBase } from '../utils/constants';
 import { getImageUrl } from './comfyui-api';
 import { extractParametersFromComfyUIWorkflow } from '../utils/png-parser';
 
@@ -7,7 +7,7 @@ import { extractParametersFromComfyUIWorkflow } from '../utils/png-parser';
  * Returns array sorted newest-first.
  */
 export async function fetchGalleryItems(limit = 50) {
-  const response = await fetch(`${API_BASE}/history`);
+  const response = await fetch(`${getApiBase()}/history`);
   if (!response.ok) {
     throw new Error(`Failed to fetch history: ${response.status}`);
   }
