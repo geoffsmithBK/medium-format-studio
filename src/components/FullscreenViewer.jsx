@@ -154,7 +154,6 @@ export default function FullscreenViewer({ imageUrl, alt, isOpen, onClose }) {
   // Compute image style and class based on zoom level
   let imageStyle = {};
   let imageClassName = 'fullscreen-image';
-
   if (zoomLevel === 'fit') {
     if (fittedDims) {
       imageStyle = { width: fittedDims.width, height: fittedDims.height, cursor: 'zoom-in' };

@@ -505,7 +505,7 @@ export default function MediumFormatStudio() {
   const canPromote = ['contact_ready', 'work_ready', 'final_ready'].includes(pipelineState);
 
   return (
-    <div className="mfs">
+    <div className="mfs" style={bw ? { filter: 'grayscale(100%)' } : undefined}>
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <div className="mfs-sidebar">
         <div className="mfs-toolbar">
