@@ -71,6 +71,7 @@ export default function MediumFormatStudio() {
   const [lora2Strength, setLora2Strength] = useState(MFS_LORA_DEFAULTS.lora2.defaultStrength);
   const [portrait, setPortrait] = useState(false);
   const [filmBorders, setFilmBorders] = useState(false);
+  const [bw, setBw] = useState(false);
   const [upscaleFactor, setUpscaleFactor] = useState(1.5);
   const [model, setModel] = useState(MFS_DEFAULT_MODEL);
   const [lora1Filename, setLora1Filename] = useState(MFS_LORA_DEFAULTS.lora1.filename);
@@ -226,6 +227,7 @@ export default function MediumFormatStudio() {
       filmFormat,
       portrait,
       filmBorders,
+      bw,
       seed,
       lora1Enabled,
       lora1Strength,
@@ -558,11 +560,11 @@ export default function MediumFormatStudio() {
                 lora1Enabled={lora1Enabled}
                 lora1Strength={lora1Strength}
                 lora1Name={MFS_LORA_DEFAULTS.lora1.name}
-                lora1Min={0} lora1Max={10} lora1Step={1}
+                lora1Min={0} lora1Max={10} lora1Step={0.1}
                 lora2Enabled={lora2Enabled}
                 lora2Strength={lora2Strength}
                 lora2Name={MFS_LORA_DEFAULTS.lora2.name}
-                lora2Min={0} lora2Max={1} lora2Step={0.05}
+                lora2Min={0} lora2Max={1} lora2Step={0.01}
                 onLora1EnabledChange={setLora1Enabled}
                 onLora1StrengthChange={setLora1Strength}
                 onLora2EnabledChange={setLora2Enabled}
@@ -587,6 +589,8 @@ export default function MediumFormatStudio() {
                 onPortraitChange={setPortrait}
                 filmBorders={filmBorders}
                 onFilmBordersChange={setFilmBorders}
+                bw={bw}
+                onBwChange={setBw}
                 disabled={paramsLocked}
               />
             </SidebarSection>

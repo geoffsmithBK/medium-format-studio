@@ -156,14 +156,14 @@ export const MFS_LORA_DEFAULTS = {
     name: 'Detail',
     filename: 'FluxKlein/detail_slider_klein_9b_20260123_065513.safetensors',
     pattern: /^FluxKlein\/detail_slider_klein_9b/,
-    defaultStrength: 7,
+    defaultStrength: 5,
     defaultEnabled: true,
   },
   lora2: {
     name: 'Chiaroscuro',
     filename: 'FluxKlein/klein_slider_chiaroscuro.safetensors',
     pattern: /^FluxKlein\/klein_slider_chiaroscuro/,
-    defaultStrength: 0.8,
+    defaultStrength: 0.5,
     defaultEnabled: true,
   },
 };

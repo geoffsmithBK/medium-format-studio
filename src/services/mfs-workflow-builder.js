@@ -131,6 +131,9 @@ function applyParams(workflow, params) {
     if (params.filmBorders) {
       promptText += ' Slightly rough, un-even black border as from an unfiled negative carrier with film edge-markings.';
     }
+    if (params.bw) {
+	promptText += ' The image is monochrome, black and white, as if shot with Kodak Tri-X, Ilford HP5, or another panchromatic film from the 20th century. Ignore earlier mentions of color, the image is devoid of color, however with enhanced and deepened contrast.';
+    }
     workflow[MFS_NODE_IDS.POSITIVE_PROMPT].inputs.text = promptText;
   }
 

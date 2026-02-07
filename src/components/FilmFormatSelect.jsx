@@ -13,11 +13,7 @@ function parseDims(value) {
  * Dropdown selector for medium-format film format presets,
  * with Portrait toggle and pixel dimension display.
  */
-export default function FilmFormatSelect({ value, onChange, formats, portrait, onPortraitChange, filmBorders, onFilmBordersChange, disabled }) {
-  const dims = parseDims(value);
-  const displayW = dims ? (portrait ? dims.h : dims.w) : null;
-  const displayH = dims ? (portrait ? dims.w : dims.h) : null;
-
+export default function FilmFormatSelect({ value, onChange, formats, portrait, onPortraitChange, filmBorders, onFilmBordersChange, bw, onBwChange, disabled }) {
   return (
     <div className="film-format-container">
       <label htmlFor="film-format" className="film-format-label">
@@ -61,9 +57,16 @@ export default function FilmFormatSelect({ value, onChange, formats, portrait, o
           />
           Film Borders
         </label>
-        {displayW && (
-          <span className="film-format-dims">{displayW} x {displayH}</span>
-        )}
+        <label className="film-format-checkbox-label">
+          <input
+            type="checkbox"
+            className="film-format-checkbox"
+            checked={bw}
+            onChange={(e) => onBwChange(e.target.checked)}
+            disabled={disabled}
+          />
+          B&amp;W
+        </label>
       </div>
     </div>
   );
