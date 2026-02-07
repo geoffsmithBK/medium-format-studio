@@ -190,25 +190,29 @@ The web UI is built with:
 src/
 ├── components/                # Reusable UI components
 │   ├── PromptInput.jsx        # Multiline prompt text input
-│   ├── NegativePromptInput.jsx # Optional negative prompt with checkbox (legacy)
-│   ├── ParameterControls.jsx  # Dimension, seed, and model controls (legacy)
-│   ├── ImageDisplay.jsx       # Image display with download button
-│   ├── ImageDropZone.jsx      # Drag-drop PNG metadata loader (legacy)
+│   ├── ImageDisplay.jsx       # Image display with inline zoom + fullscreen
+│   ├── FullscreenViewer.jsx   # Shared fullscreen overlay with zoom/pan
 │   ├── ProgressBar.jsx        # Real-time progress indicator
+│   ├── ContactSheet.jsx       # Thumbnail grid for gallery tab
+│   ├── MetadataPanel.jsx      # Sidebar metadata display for gallery
 │   ├── SidebarSection.jsx     # Collapsible sidebar section with stage badge (MFS)
 │   ├── FilmFormatSelect.jsx   # Film format preset dropdown (MFS)
 │   ├── LoRAControls.jsx       # LoRA toggle + strength controls (MFS)
-│   └── StageTabs.jsx          # Three-tab strip for output stages (MFS)
+│   ├── StageTabs.jsx          # Data-driven tab strip (MFS)
+│   ├── NegativePromptInput.jsx # Optional negative prompt with checkbox (legacy)
+│   ├── ParameterControls.jsx  # Dimension, seed, and model controls (legacy)
+│   └── ImageDropZone.jsx      # Drag-drop PNG metadata loader (legacy)
 ├── workflows/                 # Workflow-specific components
-│   ├── MediumFormatStudio.jsx # Active: 5-stage darkroom workflow
+│   ├── MediumFormatStudio.jsx # Active: 5-stage darkroom workflow + gallery
 │   └── TextToImage.jsx        # Legacy: single-pass text-to-image
 ├── services/
 │   ├── comfyui-api.js         # ComfyUI API client with WebSocket
 │   ├── mfs-workflow-builder.js # MFS stage-aware workflow assembly
+│   ├── gallery-service.js     # Fetch ComfyUI /history for gallery
 │   └── workflow-loader.js     # Legacy workflow JSON manipulation
 ├── utils/
 │   ├── constants.js           # API URLs, node IDs, MFS stage mappings
-│   └── png-parser.js          # PNG metadata extraction
+│   └── png-parser.js          # PNG metadata extraction (+ exported extractor)
 ├── App.jsx                    # Root component (renders MediumFormatStudio)
 ├── App.css                    # Global dark theme styles
 └── main.jsx                   # React entry point
@@ -265,15 +269,20 @@ Utilities for manipulating workflow JSON:
 
 **Shared components** (used by MFS and potentially other workflows):
 - **PromptInput** - Multiline text input for prompts
-- **ImageDisplay** - Image viewer with download button
+- **ImageDisplay** - Image viewer with inline zoom (small/large detection), download button, opens FullscreenViewer
+- **FullscreenViewer** - Standalone fullscreen overlay with 3-level zoom (fit/native/200%) and pan
 - **ProgressBar** - Real-time progress indicator
+
+**Gallery components** (used by the Contact Sheet tab):
+- **ContactSheet** - CSS Grid thumbnail layout; click to select, double-click to open fullscreen
+- **MetadataPanel** - Sidebar showing preview, prompt (with copy), parameter grid (seed, model, dims, steps, CFG), filename, and "Send to Contact Print" button
 
 **MFS-specific components**:
 - **SidebarSection** - Collapsible section with stage number badge and disabled state
 - **FilmFormatSelect** - Dropdown for medium-format film format presets
 - **LoRAControls** - Two LoRA rows with checkbox toggle + strength input
-- **StageTabs** - Three-tab strip (Contact Print / Work Print / Final Print) with enabled/disabled states
-- **MediumFormatStudio** - Main workflow component with full pipeline state machine
+- **StageTabs** - Data-driven tab strip; accepts `tabs` prop (default: 3 generation tabs); tab objects support optional `className` for separator styling
+- **MediumFormatStudio** - Main workflow component with pipeline state machine + gallery integration
 
 **Legacy components** (kept in repo, not currently imported):
 - **TextToImage** - Original single-pass workflow
@@ -564,47 +573,76 @@ All WebSocket messages and image fetch operations are logged to the browser cons
 - ✅ Server status checking
 - ✅ CORS configuration
 
-### Current Status: Medium Format Studio Implemented
-The application has been upgraded from the single-pass TextToImage workflow to the multi-stage Medium Format Studio pipeline. MFS supports progressive generation (contact → work → final prints), ComfyUI execution caching for efficient promotion, LoRA controls, film format presets, and stage-aware progress display.
+### Current Status: Medium Format Studio + Contact Sheet Gallery
+The application features the multi-stage Medium Format Studio pipeline with progressive generation (contact → work → final prints), ComfyUI execution caching, LoRA controls, film format presets, and stage-aware progress display. A fourth "Contact Sheet" tab provides a gallery of recent generations with metadata inspection and fullscreen viewing.
 
-## Image Gallery Module (Planned)
+## Contact Sheet (Gallery)
 
-A new **Gallery** tab feature is planned to enable browsing, viewing, and inspecting generation metadata for AI-generated images. Full implementation details are in `GALLERY.md`.
+The Contact Sheet tab is the 4th tab in MFS, providing a browsable gallery of recent ComfyUI generations.
 
-### Key Features (Planned)
-- **Tab Navigation**: Switch between Generate and Gallery views
-- **Image Grid**: Browse thumbnails of generated images
-- **Metadata Viewer**: Inspect generation parameters with copy-to-clipboard
-- **Dual Source Support**: 
-  - ComfyUI `/history` API for recent generations
-  - Drag-and-drop for external PNG files
-- **Standalone Operation**: Gallery works independently from generation UI
+### Gallery Features
+- **Thumbnail grid**: CSS Grid layout (`repeat(auto-fill, minmax(160px, 1fr))`) showing recent generations newest-first
+- **Selection**: Click a thumbnail to view its metadata in the sidebar
+- **Fullscreen**: Double-click a thumbnail to open FullscreenViewer
+- **Metadata panel**: Shows preview, prompt (with copy-to-clipboard), parameter grid (seed with inline copy, model, dimensions, steps, CFG), and filename
+- **Send to Contact Print**: Loads the selected image's prompt and seed into the generation form, resets pipeline, and switches to the Contact Print tab
+- **Always enabled**: The gallery tab is always clickable regardless of pipeline state
+- **State preservation**: Switching between gallery and generation tabs preserves state in both directions
 
-### New Architecture Components
+### Gallery Service (`services/gallery-service.js`)
+- `fetchGalleryItems(limit=50)` — fetches `GET /history`, extracts images from output nodes (picks highest-numbered node for multi-output MFS workflows), returns array sorted newest-first
+- `extractGalleryItemMetadata(item)` — passes `item.workflow` through `extractParametersFromComfyUIWorkflow()` to get prompt, seed, model, dimensions, steps, CFG
+- Actual image dimensions are resolved via browser `Image()` constructor (ground truth from the cached image, not workflow metadata)
+
+### Gallery Data Flow
+1. User switches to Contact Sheet tab → `useEffect` fetches fresh gallery items
+2. Click thumbnail → `handleGallerySelect` extracts metadata, creates `Image()` to get real pixel dimensions
+3. Sidebar shows MetadataPanel with extracted params
+4. Double-click → opens FullscreenViewer for that image
+5. "Send to Contact Print" → resets pipeline (like New Exposure), loads prompt + seed, switches tab
+
+## Image Viewer
+
+The image viewer has two contexts: **inline** (within ImageDisplay) and **fullscreen** (FullscreenViewer overlay). Behavior adapts based on whether the image is small (fits within its container/viewport) or large.
+
+### Inline Viewer (ImageDisplay)
+
+**Small images** (naturalWidth < container width):
 ```
-src/
-├── views/                    # Top-level view components
-│   ├── GenerateView.jsx      # Wraps existing TextToImage
-│   └── GalleryView.jsx       # New gallery view
-├── components/
-│   ├── TabNavigation.jsx     # Tab switcher
-│   └── gallery/              # Gallery-specific components
-│       ├── GalleryGrid.jsx   # Thumbnail grid
-│       ├── ImageCard.jsx     # Single thumbnail
-│       ├── ImageViewer.jsx   # Full-size modal
-│       └── MetadataPanel.jsx # Metadata display
-└── services/
-    └── gallery-service.js    # Gallery data fetching
+1:1 (natural size) ──click──→ fitted (fill column width) ──click──→ fullscreen
 ```
 
-### Implementation Status
-- **Phase 1**: Foundation (Not Started)
-- **Phase 2**: Grid & Thumbnails (Not Started)
-- **Phase 3**: Image Viewer & Metadata (Not Started)
-- **Phase 4**: Drag-and-Drop Support (Not Started)
-- **Phase 5**: Polish & Enhancements (Not Started)
+**Large images** (naturalWidth >= container width):
+```
+fitted (scaled to column width) ──click──→ fullscreen
+```
 
-See `GALLERY.md` for detailed implementation plan.
+ImageDisplay detects small vs. large via `onLoad` comparing `naturalWidth` to `containerRef.clientWidth`. Small images render at natural size with `max-width: 100%`; clicking toggles `inlineFitted` state before opening fullscreen.
+
+### Fullscreen Viewer (FullscreenViewer)
+
+Three zoom levels with a state machine:
+
+```
+fit ──click──→ native ──click──→ fit
+fit ──shift-click──→ 200
+native ──shift-click──→ 200
+200 ──any click──→ native
+```
+
+| Zoom Level | Behavior |
+|-----------|----------|
+| **fit** | Image scaled to fill viewport (preserving aspect ratio); computed explicit pixel dimensions that scale both up and down |
+| **native** | Image at 1:1 pixel resolution; pan enabled when image exceeds viewport |
+| **200** | Image at 2× native resolution (shift-click only); pan enabled when exceeds viewport |
+
+**Small image handling**: Images that fit within the viewport open at native/1:1 instead of fit (detected via `onLoad` → `naturalWidth`/`naturalHeight` vs `window.innerWidth`/`innerHeight`).
+
+**Pan**: Enabled in native/200 modes when the image exceeds the viewport. Uses mousedown/mousemove/mouseup tracking with a 4px movement threshold to distinguish drags from clicks.
+
+**Mouse event coordination**: Two event paths can trigger zoom transitions — `onMouseUp` (pan-enabled modes) and `onClick` (non-pan modes). A `dragRef.handled` flag ensures they never both fire for the same gesture: when drag tracking is active, `onMouseUp` always sets `handled=true`, suppressing the subsequent `onClick`.
+
+**Close**: Escape key, X button, or backdrop click from any zoom state.
 
 ## Version Control and Repository
 
@@ -675,7 +713,7 @@ git commit -m "Add feature description
 
 Detailed explanation of changes.
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
 ### Syncing Between Machines
