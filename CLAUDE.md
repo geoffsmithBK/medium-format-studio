@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This project creates a web-based user interface for AI image generation, built with React and Vite. It currently uses ComfyUI as its inference backend (`http://127.0.0.1:8188`), with planned support for Draw Things as an alternate backend for optimized Apple Silicon inference.
 
+> **Architecture decisions and platform strategy** are documented in [`ARCHITECTURE.md`](./ARCHITECTURE.md). Key decision (Feb 2026): stay web + ComfyUI, exploit ComfyUI's API for dynamic model lists and filesystem browsing, consider Tauri wrapper if/when native capabilities are needed.
+
 ### Active Workflow: Medium Format Studio
 
 The application now uses the **Medium Format Studio** (MFS) workflow — a multi-stage darkroom-metaphor pipeline for Flux.2 Klein 9B image generation. This replaces the original single-pass `TextToImage` workflow (which remains in the codebase but is no longer imported by `App.jsx`).
