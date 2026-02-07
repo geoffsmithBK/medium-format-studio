@@ -156,6 +156,22 @@ function applyParams(workflow, params) {
     workflow[MFS_NODE_IDS.UPSCALE_FACTOR].inputs.value = params.upscaleFactor;
   }
 
+  // SeedVR2 device injection (nodes 60, 61, 62)
+  // Template has "mps" baked in from Mac export; override for CUDA servers
+  if (params.computeDevice && params.computeDevice !== 'mps') {
+    const dev = params.computeDevice;
+    if (workflow[MFS_NODE_IDS.SEEDVR2_DIT]) {
+      workflow[MFS_NODE_IDS.SEEDVR2_DIT].inputs.device = dev;
+      workflow[MFS_NODE_IDS.SEEDVR2_DIT].inputs.offload_device = 'cpu';
+    }
+    if (workflow[MFS_NODE_IDS.SEEDVR2_VAE]) {
+      workflow[MFS_NODE_IDS.SEEDVR2_VAE].inputs.device = dev;
+    }
+    if (workflow[MFS_NODE_IDS.SEEDVR2_UPSCALER]) {
+      workflow[MFS_NODE_IDS.SEEDVR2_UPSCALER].inputs.offload_device = 'cpu';
+    }
+  }
+
   // Model selection (node 30) — swap loader class_type for GGUF models
   if (params.model && workflow[MFS_NODE_IDS.UNET_LOADER]) {
     const node = workflow[MFS_NODE_IDS.UNET_LOADER];

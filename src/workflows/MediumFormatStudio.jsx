@@ -23,6 +23,8 @@ import {
   generateClientId,
   checkServerStatus,
   getAvailableLoRAs,
+  getAvailableModels,
+  fetchComputeDevice,
 } from '../services/comfyui-api';
 import {
   fetchGalleryItems,
@@ -70,6 +72,7 @@ export default function MediumFormatStudio() {
   const [model, setModel] = useState(MFS_DEFAULT_MODEL);
   const [lora1Filename, setLora1Filename] = useState(MFS_LORA_DEFAULTS.lora1.filename);
   const [lora2Filename, setLora2Filename] = useState(MFS_LORA_DEFAULTS.lora2.filename);
+  const [computeDevice, setComputeDevice] = useState('mps');
 
   // ── Pipeline state ──────────────────────────────────────────────────
   const [pipelineState, setPipelineState] = useState('idle');
@@ -127,6 +130,32 @@ export default function MediumFormatStudio() {
       }
     }
     resolveLoRAs();
+  }, []);
+
+  // Detect compute device (cuda vs mps) from connected server
+  useEffect(() => {
+    fetchComputeDevice().then((device) => {
+      setComputeDevice(device);
+      console.log('Detected compute device:', device);
+    });
+  }, []);
+
+  // Auto-detect model from connected server
+  useEffect(() => {
+    async function detectModel() {
+      try {
+        const available = await getAvailableModels();
+        // Check for Klein 9B variants in preference order
+        const match = MFS_MODELS.find((m) => available.includes(m.filename));
+        if (match) {
+          setModel(match.filename);
+          console.log('Detected model:', match.label);
+        }
+      } catch (err) {
+        console.warn('Could not detect model, using default:', err);
+      }
+    }
+    detectModel();
   }, []);
 
   // Persist prompt and seed to localStorage
@@ -191,6 +220,7 @@ export default function MediumFormatStudio() {
       lora2Filename,
       upscaleFactor,
       model,
+      computeDevice,
     };
   }
 
@@ -489,18 +519,10 @@ export default function MediumFormatStudio() {
               {/* Stage 1: Film and Filters */}
               <SidebarSection stageNumber={1} title="Film and Filters" tooltipId="stage-1-film-filters" disabled={false} defaultOpen={false}>
                 <div className="mfs-field">
-                  <label htmlFor="model-select" className="mfs-label">Model</label>
-                  <select
-                    id="model-select"
-                    className="mfs-select"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    disabled={paramsLocked}
-                  >
-                    {MFS_MODELS.map((m) => (
-                      <option key={m.filename} value={m.filename}>{m.label}</option>
-                    ))}
-                  </select>
+                  <label className="mfs-label">Model</label>
+                  <div className="mfs-model-display">
+                    {MFS_MODELS.find((m) => m.filename === model)?.label || model}
+                  </div>
                 </div>
                 <LoRAControls
                   lora1Enabled={lora1Enabled}

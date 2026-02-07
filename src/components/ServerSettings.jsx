@@ -33,7 +33,7 @@ export default function ServerSettings() {
   }
 
   function handleSave() {
-    const trimmed = url.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    const trimmed = url.trim().replace(/\/+$/, '');
     setUrl(trimmed);
     setServerUrl(trimmed);
     setStatus('unknown');
@@ -89,7 +89,7 @@ export default function ServerSettings() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="127.0.0.1:8188"
+              placeholder="http://127.0.0.1:8188"
               spellCheck={false}
             />
             <button

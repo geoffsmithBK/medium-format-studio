@@ -153,6 +153,16 @@
   cursor: not-allowed;
 }
 
+.mfs-model-display {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #a0a0a0;
+  font-size: 0.875rem;
+}
+
 /* ── Seed row ──────────────────────────────────────────────────────── */
 
 .mfs-seed-row {

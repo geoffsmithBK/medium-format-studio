@@ -27,7 +27,13 @@ export async function queuePrompt(workflow, clientId) {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let detail = '';
+      try {
+        const body = await response.json();
+        detail = JSON.stringify(body, null, 2);
+        console.error('Prompt rejected by server:', body);
+      } catch (_) { /* non-JSON response */ }
+      throw new Error(`HTTP ${response.status}${detail ? ': ' + detail : ''}`);
     }
 
     const data = await response.json();
@@ -173,6 +179,19 @@ export async function getAvailableLoRAs() {
 }
 
 /**
+ * Fetch available diffusion model filenames from ComfyUI via /object_info/UNETLoader.
+ * @returns {Promise<string[]>} Array of model filenames available on the server
+ */
+export async function getAvailableModels() {
+  const response = await fetch(`${getApiBase()}/object_info/UNETLoader`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch model list: ${response.status}`);
+  }
+  const data = await response.json();
+  return data.UNETLoader.input.required.unet_name[0];
+}
+
+/**
  * Check if ComfyUI server is running
  * @returns {Promise<boolean>} True if server is accessible
  */
@@ -184,5 +203,27 @@ export async function checkServerStatus() {
     return response.ok;
   } catch (error) {
     return false;
+  }
+}
+
+/**
+ * Detect the primary compute device on the connected ComfyUI server.
+ * Returns "cuda:0", "mps", "cpu", etc. based on /system_stats response.
+ * @returns {Promise<string>} Device identifier
+ */
+export async function fetchComputeDevice() {
+  try {
+    const response = await fetch(`${getApiBase()}/system_stats`);
+    if (!response.ok) return 'cpu';
+    const data = await response.json();
+    if (data.devices && data.devices.length > 0) {
+      return data.devices[0].type === 'cuda'
+        ? `cuda:${data.devices[0].index}`
+        : data.devices[0].type;
+    }
+    return 'cpu';
+  } catch (error) {
+    console.warn('Could not detect compute device:', error);
+    return 'cpu';
   }
 }

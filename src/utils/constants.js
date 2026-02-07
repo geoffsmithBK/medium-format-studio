@@ -1,28 +1,41 @@
 // ComfyUI API configuration
-const DEFAULT_SERVER = '127.0.0.1:8188';
+const DEFAULT_SERVER = 'http://127.0.0.1:8188';
 const LS_KEY = 'comfyui_server_url';
 
+/**
+ * Normalize a server URL to ensure it has a protocol.
+ * Accepts: "127.0.0.1:8188", "http://host:port", "https://pod-id-8188.proxy.runpod.net"
+ */
+function normalizeUrl(raw) {
+  let url = raw.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//.test(url)) {
+    url = `http://${url}`;
+  }
+  return url;
+}
+
 export function getServerUrl() {
-  return localStorage.getItem(LS_KEY) || DEFAULT_SERVER;
+  return normalizeUrl(localStorage.getItem(LS_KEY) || DEFAULT_SERVER);
 }
 
 export function setServerUrl(url) {
-  if (!url || url === DEFAULT_SERVER) {
+  const normalized = normalizeUrl(url);
+  if (normalized === DEFAULT_SERVER) {
     localStorage.removeItem(LS_KEY);
   } else {
-    localStorage.setItem(LS_KEY, url);
+    localStorage.setItem(LS_KEY, normalized);
   }
 }
 
 export function getApiBase() {
-  return `http://${getServerUrl()}`;
+  return getServerUrl();
 }
 
 export function getWsBase() {
-  return `ws://${getServerUrl()}`;
+  const url = getServerUrl();
+  // https → wss, http → ws
+  return url.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
 }
-
-export const DEFAULT_SERVER_URL = DEFAULT_SERVER;
 
 // Default workflow parameters
 export const DEFAULT_WIDTH = 1024;
@@ -109,6 +122,9 @@ export const MFS_NODE_IDS = {
   UPSCALE_FACTOR: '52',       // PrimitiveFloat
   BATCH_SIZE: '55',           // PrimitiveInt
   UNET_LOADER: '30',          // UNETLoader / UnetLoaderGGUF
+  SEEDVR2_DIT: '60',           // SeedVR2LoadDiTModel
+  SEEDVR2_VAE: '61',           // SeedVR2LoadVAEModel
+  SEEDVR2_UPSCALER: '62',      // SeedVR2VideoUpscaler
 };
 
 // Film format presets — must match the exact string format "Label - WxH"
@@ -132,7 +148,7 @@ export const MFS_MODELS = [
   { label: 'Klein 9B (Q8_0 GGUF)', filename: 'flux-2-klein-9b-Q8_0.gguf', format: 'gguf' },
   { label: 'Klein 9B (Q6_K GGUF)', filename: 'flux-2-klein-9b-Q6_K.gguf', format: 'gguf' },
 ];
-export const MFS_DEFAULT_MODEL = 'flux-2-klein-9b-Q8_0.gguf';
+export const MFS_DEFAULT_MODEL = 'flux-2-klein-9b.safetensors';
 
 // LoRA defaults (from the workflow template)
 export const MFS_LORA_DEFAULTS = {
