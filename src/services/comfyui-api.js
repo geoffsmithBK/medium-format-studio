@@ -179,16 +179,32 @@ export async function getAvailableLoRAs() {
 }
 
 /**
- * Fetch available diffusion model filenames from ComfyUI via /object_info/UNETLoader.
+ * Fetch available diffusion model filenames from ComfyUI.
+ * Queries both UNETLoader (safetensors) and UnetLoaderGGUF (gguf) endpoints
+ * and merges the results into a single deduplicated list.
  * @returns {Promise<string[]>} Array of model filenames available on the server
  */
 export async function getAvailableModels() {
-  const response = await fetch(`${getApiBase()}/object_info/UNETLoader`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch model list: ${response.status}`);
+  const base = getApiBase();
+  const results = await Promise.allSettled([
+    fetch(`${base}/object_info/UNETLoader`).then((r) => r.ok ? r.json() : null),
+    fetch(`${base}/object_info/UnetLoaderGGUF`).then((r) => r.ok ? r.json() : null),
+  ]);
+
+  const models = new Set();
+  const unet = results[0].status === 'fulfilled' && results[0].value;
+  if (unet?.UNETLoader?.input?.required?.unet_name?.[0]) {
+    unet.UNETLoader.input.required.unet_name[0].forEach((m) => models.add(m));
   }
-  const data = await response.json();
-  return data.UNETLoader.input.required.unet_name[0];
+  const gguf = results[1].status === 'fulfilled' && results[1].value;
+  if (gguf?.UnetLoaderGGUF?.input?.required?.unet_name?.[0]) {
+    gguf.UnetLoaderGGUF.input.required.unet_name[0].forEach((m) => models.add(m));
+  }
+
+  if (models.size === 0) {
+    throw new Error('No models found from either UNETLoader or UnetLoaderGGUF');
+  }
+  return [...models];
 }
 
 /**

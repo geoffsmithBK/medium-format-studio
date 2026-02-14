@@ -2,7 +2,6 @@ import {
   MFS_STAGES,
   MFS_EXCLUDED_NODES,
   MFS_NODE_IDS,
-  MFS_MODELS,
 } from '../utils/constants';
 
 let cachedWorkflow = null;
@@ -203,8 +202,8 @@ function applyParams(workflow, params) {
   // Model selection (node 30) — swap loader class_type for GGUF models
   if (params.model && workflow[MFS_NODE_IDS.UNET_LOADER]) {
     const node = workflow[MFS_NODE_IDS.UNET_LOADER];
-    const modelInfo = MFS_MODELS.find((m) => m.filename === params.model);
-    if (modelInfo && modelInfo.format === 'gguf') {
+    const isGGUF = params.model.toLowerCase().endsWith('.gguf');
+    if (isGGUF) {
       node.class_type = 'UnetLoaderGGUF';
       node.inputs.unet_name = params.model;
       delete node.inputs.weight_dtype;

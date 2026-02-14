@@ -142,13 +142,53 @@ export const MFS_FILM_FORMATS = [
 
 export const MFS_DEFAULT_FILM_FORMAT = '6x7 - 1120x928';
 
-// Model options for MFS (FP16 safetensors + GGUF quantizations)
-export const MFS_MODELS = [
-  { label: 'Klein 9B (FP16)', filename: 'flux-2-klein-9b.safetensors', format: 'safetensors' },
-  { label: 'Klein 9B (Q8_0 GGUF)', filename: 'flux-2-klein-9b-Q8_0.gguf', format: 'gguf' },
-  { label: 'Klein 9B (Q6_K GGUF)', filename: 'flux-2-klein-9b-Q6_K.gguf', format: 'gguf' },
-];
-export const MFS_DEFAULT_MODEL = 'flux-2-klein-9b.safetensors';
+// Model discovery — match any Klein 9B variant on the connected server
+export const MFS_MODEL_PATTERN = /^flux-2-klein-9b/;
+
+/**
+ * Parse a model filename into a structured object with label and format.
+ * Handles: .safetensors (FP16/FP8), .gguf (Q8_0, Q6_K, Q5_K, Q4_K, etc.)
+ * @param {string} filename e.g. 'flux-2-klein-9b-Q8_0.gguf'
+ * @returns {{ filename: string, label: string, format: 'safetensors'|'gguf' }}
+ */
+export function parseModelFilename(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const format = ext === 'gguf' ? 'gguf' : 'safetensors';
+
+  let label;
+  if (format === 'gguf') {
+    // Extract quantization tag: flux-2-klein-9b-Q8_0.gguf → "Q8_0"
+    const quantMatch = filename.match(/-([QFqf]\w+)\.gguf$/);
+    const quant = quantMatch ? quantMatch[1].toUpperCase() : 'GGUF';
+    label = `Klein 9B (${quant} GGUF)`;
+  } else {
+    // safetensors — check for fp8 in the name, otherwise assume FP16
+    const isFP8 = /fp8/i.test(filename);
+    label = `Klein 9B (${isFP8 ? 'FP8' : 'FP16'})`;
+  }
+
+  return { filename, label, format };
+}
+
+/**
+ * Filter and parse available models from the server's full model list.
+ * Returns models sorted by preference: FP16 first, then FP8, then GGUF by quant level desc.
+ * @param {string[]} allModels - Full list from getAvailableModels()
+ * @returns {Array<{ filename: string, label: string, format: 'safetensors'|'gguf' }>}
+ */
+export function discoverModels(allModels) {
+  return allModels
+    .filter((f) => MFS_MODEL_PATTERN.test(f))
+    .map(parseModelFilename)
+    .sort((a, b) => {
+      // safetensors before gguf
+      if (a.format !== b.format) return a.format === 'safetensors' ? -1 : 1;
+      // within safetensors: FP16 before FP8
+      if (a.format === 'safetensors') return a.label.localeCompare(b.label);
+      // within gguf: higher quant first (Q8 > Q6 > Q5 > Q4)
+      return b.filename.localeCompare(a.filename);
+    });
+}
 
 // LoRA defaults (from the workflow template)
 export const MFS_LORA_DEFAULTS = {

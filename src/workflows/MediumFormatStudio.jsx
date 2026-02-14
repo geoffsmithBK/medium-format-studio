@@ -38,8 +38,8 @@ import {
   MFS_OUTPUT_NODES,
   MFS_NODE_IDS,
   MFS_NODE_STAGE_NAMES,
-  MFS_MODELS,
-  MFS_DEFAULT_MODEL,
+  MFS_MODEL_PATTERN,
+  discoverModels,
 } from '../utils/constants';
 import './MediumFormatStudio.css';
 
@@ -73,7 +73,8 @@ export default function MediumFormatStudio() {
   const [filmBorders, setFilmBorders] = useState(false);
   const [bw, setBw] = useState(false);
   const [upscaleFactor, setUpscaleFactor] = useState(1.5);
-  const [model, setModel] = useState(MFS_DEFAULT_MODEL);
+  const [model, setModel] = useState('');
+  const [availableModels, setAvailableModels] = useState([]);
   const [lora1Filename, setLora1Filename] = useState(MFS_LORA_DEFAULTS.lora1.filename);
   const [lora2Filename, setLora2Filename] = useState(MFS_LORA_DEFAULTS.lora2.filename);
   const [computeDevice, setComputeDevice] = useState('mps');
@@ -144,22 +145,22 @@ export default function MediumFormatStudio() {
     });
   }, []);
 
-  // Auto-detect model from connected server
+  // Discover Klein 9B model variants from connected server
   useEffect(() => {
-    async function detectModel() {
+    async function discoverServerModels() {
       try {
-        const available = await getAvailableModels();
-        // Check for Klein 9B variants in preference order
-        const match = MFS_MODELS.find((m) => available.includes(m.filename));
-        if (match) {
-          setModel(match.filename);
-          console.log('Detected model:', match.label);
+        const allModels = await getAvailableModels();
+        const discovered = discoverModels(allModels);
+        setAvailableModels(discovered);
+        if (discovered.length > 0 && !model) {
+          setModel(discovered[0].filename);
+          console.log('Discovered models:', discovered.map((m) => m.label));
         }
       } catch (err) {
-        console.warn('Could not detect model, using default:', err);
+        console.warn('Could not discover models:', err);
       }
     }
-    detectModel();
+    discoverServerModels();
   }, []);
 
   // Persist prompt and seed to localStorage
@@ -188,7 +189,7 @@ export default function MediumFormatStudio() {
 
   // ── Derived state ───────────────────────────────────────────────────
   const isGenerating = GENERATING_STATES.includes(pipelineState);
-  const paramsLocked = pipelineState !== 'idle';
+  const paramsLocked = isGenerating;
 
   const enabledTabs = ['contact', 'gallery'];
   if (workPrintUrl) enabledTabs.push('work');
@@ -479,9 +480,9 @@ export default function MediumFormatStudio() {
     if (selectedMetadata.seed != null) setSeed(selectedMetadata.seed);
     if (selectedMetadata.negativePrompt) setNegativePrompt(selectedMetadata.negativePrompt);
 
-    // Restore model if it matches a known model
+    // Restore model if it matches a discovered model on this server
     if (selectedMetadata.model) {
-      const knownModel = MFS_MODELS.find((m) => m.filename === selectedMetadata.model);
+      const knownModel = availableModels.find((m) => m.filename === selectedMetadata.model);
       if (knownModel) setModel(knownModel.filename);
     }
 
@@ -551,10 +552,24 @@ export default function MediumFormatStudio() {
             {/* Stage 1: Film and Filters */}
             <SidebarSection stageNumber={1} title="Film and Filters" tooltipId="stage-1-film-filters">
               <div className="mfs-field">
-                <label className="mfs-label">Model</label>
-                <div className="mfs-model-display">
-                  {MFS_MODELS.find((m) => m.filename === model)?.label || model}
-                </div>
+                <label htmlFor="model-select" className="mfs-label">Model</label>
+                {availableModels.length > 1 ? (
+                  <select
+                    id="model-select"
+                    className="mfs-select"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    disabled={paramsLocked}
+                  >
+                    {availableModels.map((m) => (
+                      <option key={m.filename} value={m.filename}>{m.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="mfs-model-display">
+                    {availableModels[0]?.label || model || 'Detecting...'}
+                  </div>
+                )}
               </div>
               <LoRAControls
                 lora1Enabled={lora1Enabled}
