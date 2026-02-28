@@ -1,4 +1,5 @@
 import React from 'react';
+import CacheWarningDot from './CacheWarningDot';
 import './LoRAControls.css';
 
 /**
@@ -10,6 +11,7 @@ export default function LoRAControls({
   onLora1EnabledChange, onLora1StrengthChange,
   onLora2EnabledChange, onLora2StrengthChange,
   disabled,
+  lora1Dirty, lora2Dirty,
 }) {
   return (
     <div className="lora-controls">
@@ -24,6 +26,7 @@ export default function LoRAControls({
         onEnabledChange={onLora1EnabledChange}
         onStrengthChange={onLora1StrengthChange}
         disabled={disabled}
+        dirty={lora1Dirty}
       />
       <LoRARow
         id="lora2"
@@ -36,12 +39,13 @@ export default function LoRAControls({
         onEnabledChange={onLora2EnabledChange}
         onStrengthChange={onLora2StrengthChange}
         disabled={disabled}
+        dirty={lora2Dirty}
       />
     </div>
   );
 }
 
-function LoRARow({ id, label, enabled, strength, min = 0, max = 10, step = 0.1, onEnabledChange, onStrengthChange, disabled }) {
+function LoRARow({ id, label, enabled, strength, min = 0, max = 10, step = 0.1, onEnabledChange, onStrengthChange, disabled, dirty }) {
   const rangeLabel = `(${min}–${max})`;
 
   function handleChange(e) {
@@ -62,7 +66,7 @@ function LoRARow({ id, label, enabled, strength, min = 0, max = 10, step = 0.1, 
         disabled={disabled}
       />
       <label htmlFor={id} className="lora-label">
-        {label} <span className="lora-range">{rangeLabel}</span>
+        {label}<CacheWarningDot dirty={dirty} /> <span className="lora-range">{rangeLabel}</span>
       </label>
       <input
         type="number"

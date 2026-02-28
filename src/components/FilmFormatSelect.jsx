@@ -1,5 +1,6 @@
 import React from 'react';
 import Tooltip from './Tooltip';
+import CacheWarningDot from './CacheWarningDot';
 import './FilmFormatSelect.css';
 
 /**
@@ -14,11 +15,11 @@ function parseDims(value) {
  * Dropdown selector for medium-format film format presets,
  * with Portrait toggle and pixel dimension display.
  */
-export default function FilmFormatSelect({ value, onChange, formats, portrait, onPortraitChange, filmBorders, onFilmBordersChange, bw, onBwChange, disabled }) {
+export default function FilmFormatSelect({ value, onChange, formats, portrait, onPortraitChange, filmBorders, onFilmBordersChange, bw, onBwChange, disabled, dirty }) {
   return (
     <div className="film-format-container">
       <label htmlFor="film-format" className="film-format-label">
-        Film Format
+        Film Format<CacheWarningDot dirty={dirty} />
       </label>
       <select
         id="film-format"

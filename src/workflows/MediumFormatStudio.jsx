@@ -11,6 +11,7 @@ import MetadataPanel from '../components/MetadataPanel';
 import FullscreenViewer from '../components/FullscreenViewer';
 import ServerSettings from '../components/ServerSettings';
 import AboutModal from '../components/AboutModal';
+import CacheWarningDot from '../components/CacheWarningDot';
 import {
   loadMFSWorkflow,
   buildWorkflowForTarget,
@@ -109,6 +110,7 @@ export default function MediumFormatStudio() {
   const clientIdRef = useRef(generateClientId());
   const promptIdRef = useRef(null);
   const fetchingImageRef = useRef(false);
+  const lastGeneratedParamsRef = useRef(null);
 
   // Cleanup WebSocket on unmount
   useEffect(() => {
@@ -219,6 +221,19 @@ export default function MediumFormatStudio() {
 
   const isGalleryTab = activeTab === 'gallery';
 
+  // Cache-invalidation warning: dirty flags per field
+  const isReady = !isGenerating && pipelineState !== 'idle';
+  const snap = lastGeneratedParamsRef.current;
+  const dirtyFields = isReady && snap ? {
+    prompt: prompt !== snap.prompt,
+    filmFormat: filmFormat !== snap.filmFormat || portrait !== snap.portrait
+      || filmBorders !== snap.filmBorders || bw !== snap.bw,
+    seed: seed !== snap.seed,
+    model: model !== snap.model,
+    lora1: lora1Enabled !== snap.lora1Enabled || lora1Strength !== snap.lora1Strength,
+    lora2: lora2Enabled !== snap.lora2Enabled || lora2Strength !== snap.lora2Strength,
+  } : {};
+
   // Upscaled dimensions for stages 4/5 display
   const upscaledDims = filmDims ? {
     w: Math.round(filmDims.w * upscaleFactor),
@@ -281,6 +296,13 @@ export default function MediumFormatStudio() {
    * Generic generation runner — builds workflow, queues, listens via WS.
    */
   async function runGeneration(target, skipWorkPrint, generatingState, readyState, outputNodeId, setImageUrl, switchToTab) {
+    // Snapshot cache-breaking params before generation
+    lastGeneratedParamsRef.current = {
+      prompt, negativePrompt, filmFormat, portrait,
+      filmBorders, bw, seed, model,
+      lora1Enabled, lora1Strength, lora2Enabled, lora2Strength,
+    };
+
     setError('');
     setPipelineState(generatingState);
     setProgress(0);
@@ -443,6 +465,7 @@ export default function MediumFormatStudio() {
     setError('');
     fetchingImageRef.current = false;
     promptIdRef.current = null;
+    lastGeneratedParamsRef.current = null;
   }
 
   // ── Gallery Handlers ────────────────────────────────────────────────
@@ -480,6 +503,7 @@ export default function MediumFormatStudio() {
     setError('');
     fetchingImageRef.current = false;
     promptIdRef.current = null;
+    lastGeneratedParamsRef.current = null;
 
     // Load params from selected image metadata
     if (selectedMetadata.prompt) setPrompt(selectedMetadata.prompt);
@@ -558,7 +582,7 @@ export default function MediumFormatStudio() {
             {/* Stage 1: Film and Filters */}
             <SidebarSection stageNumber={1} title="Film and Filters" tooltipId="stage-1-film-filters">
               <div className="mfs-field">
-                <label htmlFor="model-select" className="mfs-label">Model</label>
+                <label htmlFor="model-select" className="mfs-label">Model<CacheWarningDot dirty={dirtyFields.model} /></label>
                 {availableModels.length > 1 ? (
                   <select
                     id="model-select"
@@ -594,6 +618,8 @@ export default function MediumFormatStudio() {
                 onLora2EnabledChange={setLora2Enabled}
                 onLora2StrengthChange={setLora2Strength}
                 disabled={paramsLocked}
+                lora1Dirty={dirtyFields.lora1}
+                lora2Dirty={dirtyFields.lora2}
               />
             </SidebarSection>
 
@@ -604,6 +630,7 @@ export default function MediumFormatStudio() {
                 onChange={setPrompt}
                 placeholder="Describe what we see..."
                 disabled={paramsLocked}
+                dirty={dirtyFields.prompt}
               />
               <FilmFormatSelect
                 value={filmFormat}
@@ -616,6 +643,7 @@ export default function MediumFormatStudio() {
                 bw={bw}
                 onBwChange={setBw}
                 disabled={paramsLocked}
+                dirty={dirtyFields.filmFormat}
               />
             </SidebarSection>
 
@@ -623,7 +651,7 @@ export default function MediumFormatStudio() {
             <SidebarSection stageNumber={3} title="Develop & Contact Print" tooltipId="stage-3-develop-contact">
               <div className="mfs-seed-row">
                 <div className="mfs-field mfs-seed-field">
-                  <label htmlFor="seed" className="mfs-label">Seed</label>
+                  <label htmlFor="seed" className="mfs-label">Seed<CacheWarningDot dirty={dirtyFields.seed} /></label>
                   <input
                     id="seed"
                     type="number"

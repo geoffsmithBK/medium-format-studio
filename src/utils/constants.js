@@ -186,7 +186,11 @@ export function discoverModels(allModels) {
       // within safetensors: FP16 before FP8
       if (a.format === 'safetensors') return a.label.localeCompare(b.label);
       // within gguf: higher quant first (Q8 > Q6 > Q5 > Q4)
-      return b.filename.localeCompare(a.filename);
+      const quantLevel = (s) => {
+        const m = s.filename.match(/-[QFqf](\d+)/);
+        return m ? parseInt(m[1], 10) : 0;
+      };
+      return quantLevel(b) - quantLevel(a) || b.filename.localeCompare(a.filename);
     });
 }
 
