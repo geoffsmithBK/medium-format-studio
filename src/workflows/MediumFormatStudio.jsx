@@ -886,9 +886,11 @@ export default function MediumFormatStudio() {
               <PromptInput
                 id="refinement-prompt"
                 label="Refinement Prompt"
+                tooltipId="refinement-prompt"
                 value={refinementPrompt}
                 onChange={setRefinementPrompt}
-                placeholder="Optional: refine and enhance..."
+                placeholder="Optional: High resolution. Refine and subtly enhance the image whilst retaining facial details and expressions, object position, color, gamma and lighting."
+                defaultText="High resolution. Refine and subtly enhance the image whilst retaining facial details and expressions, object position, color, gamma and lighting."
                 disabled={paramsLocked}
                 dirty={dirtyFields.refinementPrompt}
                 rows={3}
