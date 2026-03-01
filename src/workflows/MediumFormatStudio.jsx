@@ -74,6 +74,7 @@ export default function MediumFormatStudio() {
   const [portrait, setPortrait] = useState(false);
   const [filmBorders, setFilmBorders] = useState(false);
   const [bw, setBw] = useState(false);
+  const [refinementPrompt, setRefinementPrompt] = useState('');
   const [upscaleFactor, setUpscaleFactor] = useState(1.5);
   const [model, setModel] = useState('');
   const [availableModels, setAvailableModels] = useState([]);
@@ -275,6 +276,7 @@ export default function MediumFormatStudio() {
     model: model !== snap.model,
     lora1: lora1Enabled !== snap.lora1Enabled || lora1Strength !== snap.lora1Strength,
     lora2: lora2Enabled !== snap.lora2Enabled || lora2Strength !== snap.lora2Strength,
+    refinementPrompt: refinementPrompt !== snap.refinementPrompt,
   } : {};
 
   // Upscaled dimensions for stages 4/5 display
@@ -300,6 +302,7 @@ export default function MediumFormatStudio() {
       lora2Strength,
       lora1Filename,
       lora2Filename,
+      refinementPrompt,
       upscaleFactor,
       model,
       computeDevice,
@@ -344,6 +347,7 @@ export default function MediumFormatStudio() {
       prompt, negativePrompt, filmFormat, portrait,
       filmBorders, bw, seed, model,
       lora1Enabled, lora1Strength, lora2Enabled, lora2Strength,
+      refinementPrompt,
     };
 
     setError('');
@@ -879,6 +883,16 @@ export default function MediumFormatStudio() {
               tooltipId="stage-4-work-print"
               disabled={!canPromote || pipelineState === 'generating_work'}
             >
+              <PromptInput
+                id="refinement-prompt"
+                label="Refinement Prompt"
+                value={refinementPrompt}
+                onChange={setRefinementPrompt}
+                placeholder="Optional: refine and enhance..."
+                disabled={paramsLocked}
+                dirty={dirtyFields.refinementPrompt}
+                rows={3}
+              />
               <div className="mfs-field">
                 <label htmlFor="upscale" className="mfs-label">Upscale Factor</label>
                 <input
