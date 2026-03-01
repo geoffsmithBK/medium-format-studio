@@ -1,6 +1,6 @@
 import { getApiBase } from '../utils/constants';
 import { getImageUrl } from './comfyui-api';
-import { extractParametersFromComfyUIWorkflow } from '../utils/png-parser';
+import { extractParametersFromComfyUIWorkflow, extractWorkflowFromPNG } from '../utils/png-parser';
 
 /**
  * Fetch recent generations from ComfyUI /history and transform into gallery items.
@@ -47,6 +47,49 @@ export async function fetchGalleryItems(limit = 50) {
   items.sort((a, b) => b.timestamp - a.timestamp);
 
   return items.slice(0, limit);
+}
+
+const IMAGE_EXTENSIONS = /\.(png|jpg|jpeg|webp)$/i;
+const MAX_FOLDER_ITEMS = 200;
+
+/**
+ * Load images from a folder FileList (from <input webkitdirectory>).
+ * Creates blob: URLs for display and extracts PNG metadata when available.
+ */
+export async function loadFolderItems(fileList) {
+  const imageFiles = Array.from(fileList).filter((f) => IMAGE_EXTENSIONS.test(f.name));
+
+  imageFiles.sort((a, b) => a.lastModified - b.lastModified || a.name.localeCompare(b.name));
+
+  const truncated = imageFiles.length > MAX_FOLDER_ITEMS;
+  const filesToLoad = imageFiles.slice(-MAX_FOLDER_ITEMS);
+
+  const items = await Promise.all(
+    filesToLoad.map(async (file) => {
+      const imageUrl = URL.createObjectURL(file);
+      let workflow = null;
+
+      if (/\.png$/i.test(file.name)) {
+        try {
+          const result = await extractWorkflowFromPNG(file);
+          workflow = result.workflow || null;
+        } catch (e) {
+          console.warn('PNG metadata extraction failed for', file.name, e);
+        }
+      }
+
+      return {
+        promptId: `folder-${file.name}-${file.lastModified}`,
+        imageUrl,
+        filename: file.name,
+        subfolder: '',
+        timestamp: file.lastModified,
+        workflow,
+      };
+    })
+  );
+
+  return { items, totalCount: imageFiles.length, truncated };
 }
 
 /**

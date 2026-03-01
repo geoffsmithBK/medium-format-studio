@@ -284,6 +284,63 @@
   color: #606060;
 }
 
+/* ── Folder UI ────────────────────────────────────────────────────── */
+
+.mfs-folder-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #2a2a2a;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 0.85rem;
+}
+
+.mfs-folder-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mfs-folder-count {
+  color: #808080;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.mfs-folder-close-btn {
+  background: none;
+  border: none;
+  color: #808080;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.mfs-folder-close-btn:hover {
+  color: #e0e0e0;
+}
+
+.mfs-load-folder-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.mfs-load-folder-btn:hover {
+  background: #333333;
+  border-color: #505050;
+}
+
 /* ── Responsive ────────────────────────────────────────────────────── */
 
 @media (max-width: 1024px) {

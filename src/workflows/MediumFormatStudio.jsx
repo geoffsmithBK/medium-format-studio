@@ -31,6 +31,7 @@ import {
 import {
   fetchGalleryItems,
   extractGalleryItemMetadata,
+  loadFolderItems,
 } from '../services/gallery-service';
 import {
   MFS_FILM_FORMATS,
@@ -105,6 +106,14 @@ export default function MediumFormatStudio() {
   const [galleryViewerOpen, setGalleryViewerOpen] = useState(false);
   const [galleryViewerIndex, setGalleryViewerIndex] = useState(-1);
 
+  // ── Folder state ──────────────────────────────────────────────────
+  const [gallerySource, setGallerySource] = useState('comfyui'); // 'comfyui' | 'folder'
+  const [folderItems, setFolderItems] = useState([]);
+  const [folderName, setFolderName] = useState('');
+  const [folderTotalCount, setFolderTotalCount] = useState(0);
+  const [folderTruncated, setFolderTruncated] = useState(false);
+  const [folderLoading, setFolderLoading] = useState(false);
+
   // ── Refs ────────────────────────────────────────────────────────────
   const wsRef = useRef(null);
   const clientIdRef = useRef(generateClientId());
@@ -112,6 +121,8 @@ export default function MediumFormatStudio() {
   const fetchingImageRef = useRef(false);
   const lastGeneratedParamsRef = useRef(null);
   const galleryGridRef = useRef(null);
+  const folderBlobUrlsRef = useRef(new Set());
+  const folderInputRef = useRef(null);
 
   // Cleanup WebSocket on unmount
   useEffect(() => {
@@ -196,20 +207,6 @@ export default function MediumFormatStudio() {
     loadGallery();
   }, [activeTab]);
 
-  // Auto-select the most recent image when gallery items load
-  useEffect(() => {
-    if (activeTab !== 'gallery' || galleryItems.length === 0) return;
-    const first = galleryItems[galleryItems.length - 1];
-    setSelectedGalleryItem(first);
-    const meta = extractGalleryItemMetadata(first) || {};
-    setSelectedMetadata(meta);
-    const img = new Image();
-    img.onload = () => {
-      setSelectedMetadata((prev) => ({ ...prev, width: img.naturalWidth, height: img.naturalHeight }));
-    };
-    img.src = first.imageUrl;
-  }, [activeTab, galleryItems]);
-
   // ── Derived state ───────────────────────────────────────────────────
   const isGenerating = GENERATING_STATES.includes(pipelineState);
   const paramsLocked = isGenerating;
@@ -235,6 +232,37 @@ export default function MediumFormatStudio() {
   const filmAspectRatio = filmDims ? `${filmDims.w} / ${filmDims.h}` : undefined;
 
   const isGalleryTab = activeTab === 'gallery';
+
+  // Active gallery items: folder mode or ComfyUI history
+  const activeGalleryItems = gallerySource === 'folder' ? folderItems : galleryItems;
+  const activeGalleryLoading = gallerySource === 'folder' ? folderLoading : galleryLoading;
+  const activeGalleryError = gallerySource === 'folder' ? '' : galleryError;
+
+  // Auto-select: oldest (first) for folder mode, newest (last) for ComfyUI
+  useEffect(() => {
+    if (activeTab !== 'gallery' || activeGalleryItems.length === 0) return;
+    const first = gallerySource === 'folder'
+      ? activeGalleryItems[0]
+      : activeGalleryItems[activeGalleryItems.length - 1];
+    setSelectedGalleryItem(first);
+    const meta = extractGalleryItemMetadata(first) || {};
+    setSelectedMetadata(meta);
+    const img = new Image();
+    img.onload = () => {
+      setSelectedMetadata((prev) => ({ ...prev, width: img.naturalWidth, height: img.naturalHeight }));
+    };
+    img.src = first.imageUrl;
+  }, [activeTab, activeGalleryItems]);
+
+  // Revoke blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      for (const url of folderBlobUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      folderBlobUrlsRef.current.clear();
+    };
+  }, []);
 
   // Cache-invalidation warning: dirty flags per field
   const isReady = !isGenerating && pipelineState !== 'idle';
@@ -499,15 +527,15 @@ export default function MediumFormatStudio() {
   }
 
   function handleGalleryOpenViewer(item) {
-    const idx = galleryItems.findIndex((i) => i.promptId === item.promptId);
+    const idx = activeGalleryItems.findIndex((i) => i.promptId === item.promptId);
     setGalleryViewerIndex(idx >= 0 ? idx : 0);
     setGalleryViewerOpen(true);
   }
 
   function handleGalleryNavigate(direction) {
-    if (galleryItems.length === 0) return;
+    if (activeGalleryItems.length === 0) return;
     setGalleryViewerIndex((prev) =>
-      (prev + direction + galleryItems.length) % galleryItems.length
+      (prev + direction + activeGalleryItems.length) % activeGalleryItems.length
     );
   }
 
@@ -519,7 +547,7 @@ export default function MediumFormatStudio() {
 
   // Keyboard navigation for gallery grid view
   useEffect(() => {
-    if (activeTab !== 'gallery' || galleryViewerOpen || galleryItems.length === 0) return;
+    if (activeTab !== 'gallery' || galleryViewerOpen || activeGalleryItems.length === 0) return;
 
     const handleKey = (e) => {
       // Don't capture when typing in an input/textarea
@@ -533,12 +561,12 @@ export default function MediumFormatStudio() {
           ? getGridColumns() : 1;
         const dir = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? step : -step;
         const currentIdx = selectedGalleryItem
-          ? galleryItems.findIndex((i) => i.promptId === selectedGalleryItem.promptId)
+          ? activeGalleryItems.findIndex((i) => i.promptId === selectedGalleryItem.promptId)
           : -1;
         const nextIdx = currentIdx < 0
           ? 0
-          : (currentIdx + dir + galleryItems.length) % galleryItems.length;
-        handleGallerySelect(galleryItems[nextIdx]);
+          : (currentIdx + dir + activeGalleryItems.length) % activeGalleryItems.length;
+        handleGallerySelect(activeGalleryItems[nextIdx]);
       }
 
       if ((e.key === ' ' || e.key === 'Enter') && selectedGalleryItem) {
@@ -548,7 +576,7 @@ export default function MediumFormatStudio() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [activeTab, galleryViewerOpen, galleryItems, selectedGalleryItem]);
+  }, [activeTab, galleryViewerOpen, activeGalleryItems, selectedGalleryItem]);
 
   function handleSendToGenerate() {
     if (!selectedMetadata) return;
@@ -593,6 +621,67 @@ export default function MediumFormatStudio() {
     setActiveTab('contact');
   }
 
+  // ── Folder Handlers ─────────────────────────────────────────────────
+
+  async function handleLoadFolder(e) {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    // Revoke previous blob URLs
+    for (const url of folderBlobUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    folderBlobUrlsRef.current.clear();
+
+    // Extract folder name from the first file's webkitRelativePath
+    const firstPath = fileList[0].webkitRelativePath || '';
+    const name = firstPath.split('/')[0] || 'Folder';
+
+    setFolderLoading(true);
+    setGallerySource('folder');
+    setFolderName(name);
+    setSelectedGalleryItem(null);
+    setSelectedMetadata(null);
+    setGalleryViewerOpen(false);
+
+    try {
+      const result = await loadFolderItems(fileList);
+      setFolderItems(result.items);
+      setFolderTotalCount(result.totalCount);
+      setFolderTruncated(result.truncated);
+
+      // Track blob URLs for cleanup
+      for (const item of result.items) {
+        folderBlobUrlsRef.current.add(item.imageUrl);
+      }
+    } catch (err) {
+      console.error('Folder load error:', err);
+      setFolderItems([]);
+    } finally {
+      setFolderLoading(false);
+    }
+
+    // Reset file input so the same folder can be re-selected
+    e.target.value = '';
+  }
+
+  function handleCloseFolder() {
+    setGallerySource('comfyui');
+    setFolderItems([]);
+    setFolderName('');
+    setFolderTotalCount(0);
+    setFolderTruncated(false);
+    setSelectedGalleryItem(null);
+    setSelectedMetadata(null);
+    setGalleryViewerOpen(false);
+
+    // Revoke blob URLs
+    for (const url of folderBlobUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    folderBlobUrlsRef.current.clear();
+  }
+
   // ── Render ──────────────────────────────────────────────────────────
 
   const canPromote = ['contact_ready', 'work_ready', 'final_ready'].includes(pipelineState);
@@ -633,12 +722,52 @@ export default function MediumFormatStudio() {
         )}
 
         {isGalleryTab ? (
-          <MetadataPanel
-            imageUrl={selectedGalleryItem?.imageUrl || null}
-            filename={selectedGalleryItem?.filename || null}
-            metadata={selectedMetadata}
-            onSendToGenerate={selectedMetadata ? handleSendToGenerate : null}
-          />
+          <>
+            {gallerySource === 'folder' ? (
+              <div className="mfs-folder-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                <span className="mfs-folder-name">{folderName}</span>
+                {folderTruncated && (
+                  <span className="mfs-folder-count">({folderItems.length} of {folderTotalCount})</span>
+                )}
+                <button
+                  type="button"
+                  className="mfs-folder-close-btn"
+                  onClick={handleCloseFolder}
+                  title="Return to ComfyUI generations"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            ) : null}
+            <MetadataPanel
+              imageUrl={selectedGalleryItem?.imageUrl || null}
+              filename={selectedGalleryItem?.filename || null}
+              metadata={selectedMetadata}
+              onSendToGenerate={selectedMetadata ? handleSendToGenerate : null}
+            />
+            {gallerySource === 'comfyui' && (
+              <button
+                type="button"
+                className="mfs-load-folder-btn"
+                onClick={() => folderInputRef.current?.click()}
+              >
+                Load Folder
+              </button>
+            )}
+            <input
+              ref={folderInputRef}
+              type="file"
+              webkitdirectory=""
+              style={{ display: 'none' }}
+              onChange={handleLoadFolder}
+            />
+          </>
         ) : (
           <div className="mfs-stages">
             {/* Stage 1: Film and Filters */}
@@ -826,16 +955,16 @@ export default function MediumFormatStudio() {
         {isGalleryTab ? (
           <>
             <ContactSheet
-              items={galleryItems}
+              items={activeGalleryItems}
               selectedId={selectedGalleryItem?.promptId || null}
               onSelect={handleGallerySelect}
               onOpenViewer={handleGalleryOpenViewer}
-              isLoading={galleryLoading}
-              error={galleryError}
+              isLoading={activeGalleryLoading}
+              error={activeGalleryError}
               gridRef={galleryGridRef}
             />
             <FullscreenViewer
-              imageUrl={galleryItems[galleryViewerIndex]?.imageUrl || ''}
+              imageUrl={activeGalleryItems[galleryViewerIndex]?.imageUrl || ''}
               alt="Gallery image"
               isOpen={galleryViewerOpen}
               onClose={() => setGalleryViewerOpen(false)}

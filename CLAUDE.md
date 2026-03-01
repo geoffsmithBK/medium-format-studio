@@ -211,7 +211,7 @@ src/
 ├── services/
 │   ├── comfyui-api.js         # ComfyUI API client with WebSocket
 │   ├── mfs-workflow-builder.js # MFS stage-aware workflow assembly
-│   ├── gallery-service.js     # Fetch ComfyUI /history for gallery
+│   ├── gallery-service.js     # Gallery: ComfyUI /history + local folder loading
 │   └── workflow-loader.js     # Legacy workflow JSON manipulation
 ├── utils/
 │   ├── constants.js           # API URLs, node IDs, MFS stage mappings
@@ -576,35 +576,44 @@ All WebSocket messages and image fetch operations are logged to the browser cons
 - ✅ Server status checking
 - ✅ CORS configuration
 
-### Current Status: Medium Format Studio + Contact Sheet Gallery
-The application features the multi-stage Medium Format Studio pipeline with progressive generation (contact → work → final prints), ComfyUI execution caching, LoRA controls, film format presets, and stage-aware progress display. A fourth "Contact Sheet" tab provides a gallery of recent generations with metadata inspection and fullscreen viewing.
+### Current Status: Medium Format Studio + Contact Sheet Gallery + Folder Browsing
+The application features the multi-stage Medium Format Studio pipeline with progressive generation (contact → work → final prints), ComfyUI execution caching, LoRA controls, film format presets, and stage-aware progress display. A fourth "Contact Sheet" tab provides a gallery of recent generations with metadata inspection and fullscreen viewing, plus the ability to load and browse any local folder of images.
 
 ## Contact Sheet (Gallery)
 
-The Contact Sheet tab is the 4th tab in MFS, providing a browsable gallery of recent ComfyUI generations.
+The Contact Sheet tab is the 4th tab in MFS, providing a browsable gallery with two sources: ComfyUI generation history and local filesystem folders.
 
 ### Gallery Features
-- **Thumbnail grid**: CSS Grid layout (`repeat(auto-fill, minmax(160px, 1fr))`) showing recent generations
-- **Auto-select**: Most recently generated image is highlighted on tab entry with metadata in sidebar
+- **Thumbnail grid**: CSS Grid layout (`repeat(auto-fill, minmax(160px, 1fr))`) showing images
+- **Auto-select**: Newest image highlighted for ComfyUI history; oldest (top-left) for loaded folders
 - **Selection**: Click a thumbnail to view its metadata in the sidebar
 - **Fullscreen**: Double-click a thumbnail, or press Space/Enter on highlighted thumbnail, to open FullscreenViewer
 - **Keyboard navigation**: Arrow keys move selection (Left/Right by 1, Up/Down by grid row with wrapping); Space or Enter opens fullscreen
 - **Metadata panel**: Shows preview, prompt (with copy-to-clipboard), parameter grid (seed with inline copy, model, dimensions, steps, CFG), and filename
 - **Send to Contact Print**: Loads the selected image's prompt and seed into the generation form, resets pipeline, and switches to the Contact Print tab
+- **Load Folder**: Browse any local folder of images (PNG, JPG, WebP) via `<input webkitdirectory>`. Displays folder name with close button; closing returns to ComfyUI history view
 - **Always enabled**: The gallery tab is always clickable regardless of pipeline state
 - **State preservation**: Switching between gallery and generation tabs preserves state in both directions
 
+### Gallery Sources
+
+**ComfyUI History** (default): Fetches recent generations from `GET /history`. Auto-selects newest (last) image.
+
+**Local Folder**: User clicks "Load Folder" button → system folder picker → images loaded as blob URLs with optional PNG metadata extraction. Auto-selects oldest (first) image. Cap of 200 images; truncation indicated in folder label. Blob URLs are tracked in a ref and revoked on folder close or unmount.
+
 ### Gallery Service (`services/gallery-service.js`)
-- `fetchGalleryItems(limit=50)` — fetches `GET /history`, extracts images from output nodes (picks highest-numbered node for multi-output MFS workflows), returns array sorted newest-first
+- `fetchGalleryItems(limit=50)` — fetches `GET /history`, extracts images from output nodes (picks highest-numbered node for multi-output MFS workflows), returns array sorted oldest-first
 - `extractGalleryItemMetadata(item)` — passes `item.workflow` through `extractParametersFromComfyUIWorkflow()` to get prompt, seed, model, dimensions, steps, CFG
+- `loadFolderItems(fileList)` — filters image files from a `webkitdirectory` FileList, sorts by `lastModified`, creates blob URLs, extracts PNG metadata where available, returns `{ items, totalCount, truncated }`
 - Actual image dimensions are resolved via browser `Image()` constructor (ground truth from the cached image, not workflow metadata)
 
 ### Gallery Data Flow
-1. User switches to Contact Sheet tab → `useEffect` fetches fresh gallery items, auto-selects most recent
+1. User switches to Contact Sheet tab → `useEffect` fetches fresh gallery items, auto-selects based on source
 2. Click or arrow-key to thumbnail → `handleGallerySelect` extracts metadata, creates `Image()` to get real pixel dimensions
 3. Sidebar shows MetadataPanel with extracted params
 4. Double-click, Space, or Enter → opens FullscreenViewer for that image
 5. "Send to Contact Print" → resets pipeline (like New Exposure), loads prompt + seed, switches tab
+6. "Load Folder" → system folder picker → switches `gallerySource` to `'folder'`, displays folder images with close button to return
 
 ## Image Viewer
 
