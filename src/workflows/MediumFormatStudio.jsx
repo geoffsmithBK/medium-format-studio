@@ -242,17 +242,10 @@ export default function MediumFormatStudio() {
   // Auto-select: oldest (first) for folder mode, newest (last) for ComfyUI
   useEffect(() => {
     if (activeTab !== 'gallery' || activeGalleryItems.length === 0) return;
-    const first = gallerySource === 'folder'
+    const item = gallerySource === 'folder'
       ? activeGalleryItems[0]
       : activeGalleryItems[activeGalleryItems.length - 1];
-    setSelectedGalleryItem(first);
-    const meta = extractGalleryItemMetadata(first) || {};
-    setSelectedMetadata(meta);
-    const img = new Image();
-    img.onload = () => {
-      setSelectedMetadata((prev) => ({ ...prev, width: img.naturalWidth, height: img.naturalHeight }));
-    };
-    img.src = first.imageUrl;
+    handleGallerySelect(item);
   }, [activeTab, activeGalleryItems]);
 
   // Revoke blob URLs on unmount
@@ -498,14 +491,12 @@ export default function MediumFormatStudio() {
     );
   }
 
-  function handleNewExposure() {
+  function resetPipeline() {
     closeWebSocket();
     setPipelineState('idle');
-    setSeed(generateRandomSeed());
     setContactPrintUrl('');
     setWorkPrintUrl('');
     setFinalPrintUrl('');
-    setActiveTab('contact');
     setProgress(0);
     setProgressMax(0);
     setStatus('');
@@ -515,19 +506,31 @@ export default function MediumFormatStudio() {
     lastGeneratedParamsRef.current = null;
   }
 
+  function handleNewExposure() {
+    resetPipeline();
+    setSeed(generateRandomSeed());
+    setActiveTab('contact');
+  }
+
   // ── Gallery Handlers ────────────────────────────────────────────────
 
   function handleGallerySelect(item) {
     setSelectedGalleryItem(item);
     const meta = extractGalleryItemMetadata(item) || {};
-    setSelectedMetadata(meta);
 
-    // Get actual pixel dimensions from the cached image
-    const img = new Image();
-    img.onload = () => {
-      setSelectedMetadata((prev) => ({ ...prev, width: img.naturalWidth, height: img.naturalHeight }));
-    };
-    img.src = item.imageUrl;
+    // Use cached dimensions if available, otherwise resolve via Image()
+    if (item._width && item._height) {
+      setSelectedMetadata({ ...meta, width: item._width, height: item._height });
+    } else {
+      setSelectedMetadata(meta);
+      const img = new Image();
+      img.onload = () => {
+        item._width = img.naturalWidth;
+        item._height = img.naturalHeight;
+        setSelectedMetadata((prev) => ({ ...prev, width: img.naturalWidth, height: img.naturalHeight }));
+      };
+      img.src = item.imageUrl;
+    }
   }
 
   function handleGalleryOpenViewer(item) {
@@ -585,19 +588,7 @@ export default function MediumFormatStudio() {
   function handleSendToGenerate() {
     if (!selectedMetadata) return;
 
-    // Reset pipeline (like New Exposure)
-    closeWebSocket();
-    setPipelineState('idle');
-    setContactPrintUrl('');
-    setWorkPrintUrl('');
-    setFinalPrintUrl('');
-    setProgress(0);
-    setProgressMax(0);
-    setStatus('');
-    setError('');
-    fetchingImageRef.current = false;
-    promptIdRef.current = null;
-    lastGeneratedParamsRef.current = null;
+    resetPipeline();
 
     // Load params from selected image metadata
     if (selectedMetadata.prompt) setPrompt(selectedMetadata.prompt);
