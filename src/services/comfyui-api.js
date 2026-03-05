@@ -51,7 +51,7 @@ export async function queuePrompt(workflow, clientId) {
  */
 export async function getHistory(promptId) {
   try {
-    const response = await fetch(`${getApiBase()}/history/${promptId}`);
+    const response = await fetch(`${getApiBase()}/history/${encodeURIComponent(promptId)}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

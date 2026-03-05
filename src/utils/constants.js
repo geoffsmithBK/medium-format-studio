@@ -21,6 +21,9 @@ export function getServerUrl() {
 
 export function setServerUrl(url) {
   const normalized = normalizeUrl(url);
+  if (!/^https?:\/\//.test(normalized)) {
+    throw new Error('Server URL must use http:// or https:// scheme');
+  }
   if (normalized === DEFAULT_SERVER) {
     localStorage.removeItem(LS_KEY);
   } else {
