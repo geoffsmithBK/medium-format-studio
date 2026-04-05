@@ -137,3 +137,7 @@ npm run preview    # Preview production build
 ## License
 
 MIT
+
+<p align="center">
+  <img src="img/mfs_about.png">
+</p>
