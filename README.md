@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="img/mfs_screenshot.png">
+</p>
+
 # Medium Format Studio (MFS)
 
 A web-based UI for AI image generation using the **Medium Format Studio** (MFS) workflow — a multi-stage darkroom-metaphor pipeline built on Flux.2 Klein 9B.
